@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="로컬에서 AI와 대결하는 물풍선 아케이드 게임"
+    />
+    <title>Bubble Battle</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="game-frame" aria-label="Bubble Battle 게임">
+        <div id="game-container"></div>
+      </section>
+      <section
+        class="touch-controls"
+        data-touch-controls
+        aria-label="모바일 게임 조작"
+      >
+        <div class="touch-dpad" aria-label="이동 방향">
+          <button
+            class="touch-button touch-up"
+            type="button"
+            data-control="up"
+            aria-label="위로 이동"
+          >
+            ▲
+          </button>
+          <button
+            class="touch-button touch-left"
+            type="button"
+            data-control="left"
+            aria-label="왼쪽으로 이동"
+          >
+            ◀
+          </button>
+          <span class="touch-dpad-center" aria-hidden="true"></span>
+          <button
+            class="touch-button touch-right"
+            type="button"
+            data-control="right"
+            aria-label="오른쪽으로 이동"
+          >
+            ▶
+          </button>
+          <button
+            class="touch-button touch-down"
+            type="button"
+            data-control="down"
+            aria-label="아래로 이동"
+          >
+            ▼
+          </button>
+        </div>
+        <div class="touch-actions" aria-label="게임 액션">
+          <div class="touch-utilities">
+            <button
+              class="touch-button touch-small"
+              type="button"
+              data-control="pause"
+              aria-label="일시정지"
+            >
+              Ⅱ
+            </button>
+            <button
+              class="touch-button touch-small"
+              type="button"
+              data-control="mute"
+              aria-label="음소거"
+            >
+              ♪
+            </button>
+          </div>
+          <button
+            class="touch-button touch-needle"
+            type="button"
+            data-control="needle"
+            aria-label="바늘 사용"
+          >
+            바늘
+          </button>
+          <button
+            class="touch-button touch-balloon"
+            type="button"
+            data-control="balloon"
+            aria-label="물풍선 설치"
+          >
+            물풍선
+          </button>
+        </div>
+      </section>
+      <p class="controls">
+        <span>이동 <kbd>방향키</kbd> / <kbd>WASD</kbd></span>
+        <span>물풍선 <kbd>Space</kbd></span>
+        <span>바늘 <kbd>E</kbd></span>
+        <span>일시정지 <kbd>Esc</kbd></span>
+      </p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

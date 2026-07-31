@@ -1,0 +1,338 @@
+import { expect, test, type Page } from "@playwright/test";
+
+interface DebugPlayer {
+  id: number;
+  x: number;
+  y: number;
+  status: string;
+}
+
+interface DebugState {
+  seed: number;
+  tick: number;
+  phase: string;
+  players: DebugPlayer[];
+  balloons: Array<{
+    ownerId: number;
+    col: number;
+    row: number;
+  }>;
+}
+
+interface DebugUiState {
+  countdownMs: number;
+  paused: boolean;
+  resultVisible: boolean;
+}
+
+async function state(page: Page): Promise<DebugState> {
+  return page.evaluate(
+    () => window.__BUBBLE_BATTLE__.getState() as DebugState,
+  );
+}
+
+async function uiState(page: Page): Promise<DebugUiState> {
+  return page.evaluate(
+    () =>
+      window.__BUBBLE_BATTLE__.getUiState() as DebugUiState,
+  );
+}
+
+async function forceHumanDefeat(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const debugState =
+      window.__BUBBLE_BATTLE__.getState() as DebugState;
+    const human = debugState.players.find(
+      (player) => player.id === 1,
+    );
+    if (human !== undefined) {
+      human.status = "dead";
+    }
+  });
+  await expect
+    .poll(async () => (await state(page)).phase)
+    .toBe("ended");
+  await expect
+    .poll(async () => (await uiState(page)).resultVisible, {
+      timeout: 3_000,
+    })
+    .toBe(true);
+}
+
+async function clickGamePoint(
+  page: Page,
+  x: number,
+  y: number,
+): Promise<void> {
+  const canvas = page.locator("#game-container canvas");
+  const box = await canvas.boundingBox();
+  if (box === null) {
+    throw new Error("Game canvas is not visible.");
+  }
+
+  await page.mouse.click(
+    box.x + (x / 1100) * box.width,
+    box.y + (y / 720) * box.height,
+  );
+}
+
+test("menu starts a playable local match", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() >= 400) {
+      runtimeErrors.push(`${response.status()} ${response.url()}`);
+    }
+  });
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      !message.text().includes("Failed to load resource")
+    ) {
+      runtimeErrors.push(message.text());
+    }
+  });
+
+  await page.goto("/");
+  await expect(page.locator("#game-container canvas")).toBeVisible();
+  await page.screenshot({
+    path: "test-results/menu.png",
+    fullPage: true,
+  });
+
+  await clickGamePoint(page, 550, 383);
+  await expect
+    .poll(async () => (await state(page)).tick, { timeout: 6_000 })
+    .toBeGreaterThan(2);
+
+  const beforeMove = await state(page);
+  const playerBefore = beforeMove.players.find(
+    (player) => player.id === 1,
+  );
+  await page.keyboard.down("ArrowRight");
+  await expect
+    .poll(
+      async () => {
+        const human = (await state(page)).players.find(
+          (player) => player.id === 1,
+        );
+        return Math.floor((human?.x ?? 0) / 1_024);
+      },
+      {
+        timeout: 1_500,
+        intervals: [10],
+      },
+    )
+    .toBe(2);
+  await page.keyboard.up("ArrowRight");
+
+  const afterMove = await state(page);
+  const playerAfter = afterMove.players.find(
+    (player) => player.id === 1,
+  );
+  expect(playerAfter?.x).toBeGreaterThan(playerBefore?.x ?? 0);
+  const occupiedCol = Math.floor((playerAfter?.x ?? 0) / 1_024);
+  const occupiedRow = Math.floor((playerAfter?.y ?? 0) / 1_024);
+  const occupiedCenterX = occupiedCol * 1_024 + 512;
+  expect(
+    Math.abs((playerAfter?.x ?? 0) - occupiedCenterX),
+  ).toBeGreaterThan(180);
+
+  await page.keyboard.down("Space");
+  await page.waitForTimeout(120);
+  await page.keyboard.up("Space");
+  await expect
+    .poll(async () =>
+      (await state(page)).balloons.some(
+        (balloon) => balloon.ownerId === 1,
+      ),
+    )
+    .toBe(true);
+  expect(
+    (await state(page)).balloons.find(
+      (balloon) => balloon.ownerId === 1,
+    ),
+  ).toMatchObject({
+    col: occupiedCol,
+    row: occupiedRow,
+  });
+
+  await page.keyboard.down("ArrowLeft");
+  await page.waitForTimeout(370);
+  await page.keyboard.up("ArrowLeft");
+  await page.keyboard.down("ArrowDown");
+  await page.waitForTimeout(390);
+  await page.keyboard.up("ArrowDown");
+
+  await page.waitForTimeout(1_520);
+  await page.screenshot({
+    path: "test-results/battle.png",
+    fullPage: true,
+  });
+  await page.waitForTimeout(500);
+  expect(
+    (await state(page)).players.find((player) => player.id === 1)
+      ?.status,
+  ).toBe("alive");
+
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("escape pauses and resumes the fixed-tick simulation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await clickGamePoint(page, 550, 383);
+  await expect
+    .poll(async () => (await state(page)).tick, { timeout: 6_000 })
+    .toBeGreaterThan(2);
+
+  await page.keyboard.press("Escape");
+  const pausedTick = (await state(page)).tick;
+  await page.waitForTimeout(350);
+  expect((await state(page)).tick).toBe(pausedTick);
+
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(async () => (await state(page)).tick)
+    .toBeGreaterThan(pausedTick);
+});
+
+test("retry resets countdown and can show a second result", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await clickGamePoint(page, 550, 383);
+  await expect
+    .poll(async () => (await state(page)).tick, { timeout: 6_000 })
+    .toBeGreaterThan(2);
+
+  await forceHumanDefeat(page);
+  const firstSeed = (await state(page)).seed;
+  await clickGamePoint(page, 286, 460);
+
+  await expect
+    .poll(async () => (await state(page)).seed)
+    .not.toBe(firstSeed);
+  expect((await state(page)).tick).toBe(0);
+  const restartedUi = await uiState(page);
+  expect(restartedUi.resultVisible).toBe(false);
+  expect(restartedUi.countdownMs).toBeGreaterThan(2_500);
+
+  await page.waitForTimeout(900);
+  const countingUi = await uiState(page);
+  expect(countingUi.countdownMs).toBeLessThan(
+    restartedUi.countdownMs,
+  );
+  expect(countingUi.countdownMs).toBeGreaterThan(0);
+
+  await expect
+    .poll(async () => (await state(page)).tick, { timeout: 5_000 })
+    .toBeGreaterThan(2);
+  await forceHumanDefeat(page);
+});
+
+test.describe("mobile touch controls", () => {
+  test.use({
+    viewport: {
+      width: 780,
+      height: 430,
+    },
+    hasTouch: true,
+    isMobile: true,
+  });
+
+  test("moves, places a balloon, and pauses without a keyboard", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await clickGamePoint(page, 550, 383);
+
+    const touchControls = page.locator("[data-touch-controls]");
+    await expect(touchControls).toBeVisible();
+    await expect
+      .poll(async () => (await state(page)).tick, {
+        timeout: 6_000,
+      })
+      .toBeGreaterThan(2);
+
+    const humanBefore = (await state(page)).players.find(
+      (player) => player.id === 1,
+    );
+    const right = page.locator('[data-control="right"]');
+    await right.dispatchEvent("pointerdown", {
+      pointerId: 11,
+      pointerType: "touch",
+      isPrimary: true,
+    });
+    await page.waitForTimeout(360);
+    await right.dispatchEvent("pointerup", {
+      pointerId: 11,
+      pointerType: "touch",
+      isPrimary: true,
+    });
+
+    const humanAfter = (await state(page)).players.find(
+      (player) => player.id === 1,
+    );
+    expect(humanAfter?.x).toBeGreaterThan(humanBefore?.x ?? 0);
+
+    await page.locator('[data-control="balloon"]').tap();
+    await expect
+      .poll(async () =>
+        (await state(page)).balloons.some(
+          (balloon) => balloon.ownerId === 1,
+        ),
+      )
+      .toBe(true);
+
+    await page.locator('[data-control="pause"]').tap();
+    const pausedTick = (await state(page)).tick;
+    await page.waitForTimeout(320);
+    expect((await state(page)).tick).toBe(pausedTick);
+
+    await page.locator('[data-control="pause"]').tap();
+    await expect
+      .poll(async () => (await state(page)).tick)
+      .toBeGreaterThan(pausedTick);
+    await page.screenshot({
+      path: "test-results/mobile.png",
+      fullPage: true,
+    });
+  });
+});
+
+test.describe("mobile portrait layout", () => {
+  test.use({
+    viewport: {
+      width: 390,
+      height: 844,
+    },
+    hasTouch: true,
+    isMobile: true,
+  });
+
+  test("keeps the game and controls inside the viewport", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await clickGamePoint(page, 550, 383);
+
+    const touchControls = page.locator("[data-touch-controls]");
+    const balloonButton = page.locator(
+      '[data-control="balloon"]',
+    );
+    await expect(touchControls).toBeVisible();
+    await expect(balloonButton).toBeVisible();
+
+    const controlsBox = await touchControls.boundingBox();
+    expect(controlsBox).not.toBeNull();
+    expect(
+      (controlsBox?.y ?? 0) + (controlsBox?.height ?? 0),
+    ).toBeLessThanOrEqual(844);
+    await page.screenshot({
+      path: "test-results/mobile-portrait.png",
+      fullPage: true,
+    });
+  });
+});
