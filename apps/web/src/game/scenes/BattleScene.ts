@@ -105,6 +105,7 @@ export class BattleScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const safeDelta = Math.min(delta, 100);
+    const countdownDelta = Math.min(delta, 250);
 
     const keyboardMute = this.controls.consumeMute();
     const touchMute = this.touchControls.consumeMute();
@@ -131,7 +132,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.countdownMs > 0) {
       this.controls.readInput();
       this.touchControls.clearOneShots();
-      this.updateCountdown(safeDelta);
+      this.updateCountdown(countdownDelta);
     } else if (!this.paused && this.state.phase === "playing") {
       this.accumulator += safeDelta;
       while (this.accumulator >= TICK_MS) {

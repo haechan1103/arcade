@@ -20,6 +20,7 @@ import {
   cellToScreen,
   GAME_HEIGHT,
   GAME_WIDTH,
+  IS_COMPACT_LAYOUT,
   SIDEBAR_X,
   TILE_SIZE,
   UI_FONT,
@@ -75,6 +76,9 @@ export class BattleRenderer {
   private readonly botModeText: Phaser.GameObjects.Text;
   private readonly helpText: Phaser.GameObjects.Text;
   private readonly seedText: Phaser.GameObjects.Text;
+  private readonly compactHumanText: Phaser.GameObjects.Text;
+  private readonly compactTimeText: Phaser.GameObjects.Text;
+  private readonly compactBotText: Phaser.GameObjects.Text;
   private readonly overlayPrimary: Phaser.GameObjects.Text;
   private readonly overlaySecondary: Phaser.GameObjects.Text;
   private readonly particles: Particle[] = [];
@@ -178,6 +182,53 @@ export class BattleRenderer {
       700,
     );
 
+    this.compactHumanText = this.makeText(
+      BOARD_X + 17,
+      BOARD_Y + 24,
+      "",
+      18,
+      "#75efff",
+      900,
+    )
+      .setOrigin(0, 0.5)
+      .setVisible(IS_COMPACT_LAYOUT);
+    this.compactTimeText = this.makeText(
+      BOARD_X + BOARD_WIDTH / 2,
+      BOARD_Y + 24,
+      "2:30",
+      26,
+      "#ffffff",
+      900,
+    )
+      .setOrigin(0.5)
+      .setVisible(IS_COMPACT_LAYOUT);
+    this.compactBotText = this.makeText(
+      BOARD_X + BOARD_WIDTH - 17,
+      BOARD_Y + 24,
+      "",
+      18,
+      "#ff8bac",
+      900,
+    )
+      .setOrigin(1, 0.5)
+      .setVisible(IS_COMPACT_LAYOUT);
+
+    for (const text of [
+      this.titleText,
+      this.mapText,
+      this.timeText,
+      this.phaseText,
+      this.humanNameText,
+      this.humanStatsText,
+      this.botNameText,
+      this.botStatsText,
+      this.botModeText,
+      this.helpText,
+      this.seedText,
+    ]) {
+      text.setVisible(!IS_COMPACT_LAYOUT);
+    }
+
     this.overlayPrimary = this.makeText(
       BOARD_X + BOARD_WIDTH / 2,
       BOARD_Y + BOARD_HEIGHT / 2 - 14,
@@ -276,7 +327,11 @@ export class BattleRenderer {
     this.graphics.clear();
     this.drawBackdrop(elapsedMs);
     this.drawBoard(state, elapsedMs);
-    this.drawSidebar(state, botDebug);
+    if (IS_COMPACT_LAYOUT) {
+      this.drawCompactHud(state);
+    } else {
+      this.drawSidebar(state, botDebug);
+    }
     this.drawEntities(
       state,
       previousPositions,
@@ -328,22 +383,24 @@ export class BattleRenderer {
       BOARD_HEIGHT + 12,
       24,
     );
-    this.graphics.fillStyle(0x17233e, 0.9);
-    this.graphics.fillRoundedRect(
-      SIDEBAR_X,
-      28,
-      282,
-      664,
-      24,
-    );
-    this.graphics.lineStyle(1, 0x8edfff, 0.16);
-    this.graphics.strokeRoundedRect(
-      SIDEBAR_X,
-      28,
-      282,
-      664,
-      24,
-    );
+    if (!IS_COMPACT_LAYOUT) {
+      this.graphics.fillStyle(0x17233e, 0.9);
+      this.graphics.fillRoundedRect(
+        SIDEBAR_X,
+        28,
+        282,
+        664,
+        24,
+      );
+      this.graphics.lineStyle(1, 0x8edfff, 0.16);
+      this.graphics.strokeRoundedRect(
+        SIDEBAR_X,
+        28,
+        282,
+        664,
+        24,
+      );
+    }
   }
 
   private drawBoard(state: GameState, elapsedMs: number): void {
@@ -801,6 +858,79 @@ export class BattleRenderer {
     this.seedText.setText(
       `SEED ${state.seed.toString(16).toUpperCase().padStart(8, "0")}`,
     );
+  }
+
+  private drawCompactHud(state: GameState): void {
+    this.graphics.fillStyle(0x07152d, 0.9);
+    this.graphics.fillRoundedRect(
+      BOARD_X + 6,
+      BOARD_Y + 5,
+      BOARD_WIDTH - 12,
+      38,
+      13,
+    );
+    this.graphics.lineStyle(1, 0xa5ecff, 0.2);
+    this.graphics.strokeRoundedRect(
+      BOARD_X + 6,
+      BOARD_Y + 5,
+      BOARD_WIDTH - 12,
+      38,
+      13,
+    );
+
+    const remainingTicks = Math.max(
+      0,
+      ROUND_DURATION_TICKS - state.tick,
+    );
+    const seconds = Math.ceil(remainingTicks / TICK_RATE);
+    const minutes = Math.floor(seconds / 60);
+    const secondPart = String(seconds % 60).padStart(2, "0");
+    this.compactTimeText
+      .setText(`${minutes}:${secondPart}`)
+      .setColor(
+        state.tick >= STORM_START_TICK ? "#ff8bb5" : "#ffffff",
+      );
+
+    const human = state.players.find((player) => player.id === 1);
+    const bot = state.players.find((player) => player.id === 2);
+    if (human !== undefined) {
+      this.compactHumanText
+        .setText(this.compactPlayerStats("YOU", human, true))
+        .setColor(this.compactStatusColor(human, "#75efff"));
+    }
+    if (bot !== undefined) {
+      this.compactBotText
+        .setText(this.compactPlayerStats("BOT", bot, false))
+        .setColor(this.compactStatusColor(bot, "#ff8bac"));
+    }
+  }
+
+  private compactPlayerStats(
+    label: string,
+    player: PlayerState,
+    includeNeedle: boolean,
+  ): string {
+    const status =
+      player.status === "trapped"
+        ? "!"
+        : player.status === "dead"
+          ? "×"
+          : "";
+    const needle = includeNeedle ? `  ◇${player.needles}` : "";
+    return `${label}${status}  ●${player.activeBalloons}/${player.balloonCapacity}  ✦${player.blastRange}  »${player.speedLevel + 1}${needle}`;
+  }
+
+  private compactStatusColor(
+    player: PlayerState,
+    defaultColor: string,
+  ): string {
+    if (player.status === "dead") {
+      return "#687893";
+    }
+    if (player.status === "trapped") {
+      return "#ffe17a";
+    }
+    return defaultColor;
   }
 
   private drawPlayerCard(

@@ -25,6 +25,12 @@ interface DebugUiState {
   resultVisible: boolean;
 }
 
+interface DebugLayout {
+  width: number;
+  height: number;
+  compact: boolean;
+}
+
 async function state(page: Page): Promise<DebugState> {
   return page.evaluate(
     () => window.__BUBBLE_BATTLE__.getState() as DebugState,
@@ -95,6 +101,15 @@ test("menu starts a playable local match", async ({ page }) => {
 
   await page.goto("/");
   await expect(page.locator("#game-container canvas")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => window.__BUBBLE_BATTLE__.layout as DebugLayout,
+    ),
+  ).toEqual({
+    width: 1_100,
+    height: 720,
+    compact: false,
+  });
   await page.screenshot({
     path: "test-results/menu.png",
     fullPage: true,
@@ -246,6 +261,18 @@ test.describe("mobile touch controls", () => {
     page,
   }) => {
     await page.goto("/");
+    expect(
+      await page.evaluate(
+        () => window.__BUBBLE_BATTLE__.layout as DebugLayout,
+      ),
+    ).toEqual({
+      width: 800,
+      height: 680,
+      compact: true,
+    });
+    await expect(
+      page.locator("[data-fullscreen-toggle]"),
+    ).toBeVisible();
     await clickGamePoint(page, 550, 383);
 
     const touchControls = page.locator("[data-touch-controls]");
@@ -316,6 +343,9 @@ test.describe("mobile portrait layout", () => {
     page,
   }) => {
     await page.goto("/");
+    await expect(
+      page.locator("[data-fullscreen-toggle]"),
+    ).toBeVisible();
     await clickGamePoint(page, 550, 383);
 
     const touchControls = page.locator("[data-touch-controls]");
@@ -326,6 +356,9 @@ test.describe("mobile portrait layout", () => {
     await expect(balloonButton).toBeVisible();
 
     const controlsBox = await touchControls.boundingBox();
+    const canvas = page.locator("#game-container canvas");
+    await expect(canvas).toHaveAttribute("width", "800");
+    await expect(canvas).toHaveAttribute("height", "680");
     expect(controlsBox).not.toBeNull();
     expect(
       (controlsBox?.y ?? 0) + (controlsBox?.height ?? 0),

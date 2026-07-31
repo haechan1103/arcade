@@ -8,6 +8,11 @@ declare global {
       game: Phaser.Game;
       getState: () => unknown;
       getUiState: () => unknown;
+      layout: {
+        width: number;
+        height: number;
+        compact: boolean;
+      };
     };
   }
 }

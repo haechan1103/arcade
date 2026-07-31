@@ -4,6 +4,7 @@ import { soundFx } from "../audio/SoundFx";
 import {
   GAME_HEIGHT,
   GAME_WIDTH,
+  IS_COMPACT_LAYOUT,
   UI_FONT,
 } from "../layout";
 import { createButton } from "../ui/createButton";
@@ -61,10 +62,22 @@ export class MenuScene extends Phaser.Scene {
     this.backgroundGraphics = this.add.graphics().setDepth(0);
     this.createBubbles();
 
+    const titleSize = IS_COMPACT_LAYOUT ? 68 : 86;
+    const titleTop = IS_COMPACT_LAYOUT ? 80 : 103;
+    const titleBottom = IS_COMPACT_LAYOUT ? 143 : 181;
+    const taglineY = IS_COMPACT_LAYOUT ? 205 : 245;
+    const difficultyLabelY = IS_COMPACT_LAYOUT ? 270 : 307;
+    const difficultyY = IS_COMPACT_LAYOUT ? 362 : 383;
+    const difficultyWidth = IS_COMPACT_LAYOUT ? 216 : 282;
+    const difficultyGap = IS_COMPACT_LAYOUT ? 230 : 316;
+    const startX =
+      GAME_WIDTH / 2 -
+      difficultyGap * ((DIFFICULTIES.length - 1) / 2);
+
     this.add
-      .text(GAME_WIDTH / 2, 103, "BUBBLE", {
+      .text(GAME_WIDTH / 2, titleTop, "BUBBLE", {
         fontFamily: UI_FONT,
-        fontSize: "86px",
+        fontSize: `${titleSize}px`,
         fontStyle: "bold",
         color: "#f7fcff",
         stroke: "#123852",
@@ -73,9 +86,9 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2);
     this.add
-      .text(GAME_WIDTH / 2, 181, "BATTLE", {
+      .text(GAME_WIDTH / 2, titleBottom, "BATTLE", {
         fontFamily: UI_FONT,
-        fontSize: "86px",
+        fontSize: `${titleSize}px`,
         fontStyle: "bold",
         color: "#62e9ff",
         stroke: "#123852",
@@ -86,7 +99,7 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        245,
+        taglineY,
         "물풍선을 놓고, 길을 만들고, 먼저 상대를 가두세요.",
         {
           fontFamily: UI_FONT,
@@ -98,7 +111,7 @@ export class MenuScene extends Phaser.Scene {
       .setDepth(2);
 
     this.add
-      .text(GAME_WIDTH / 2, 307, "AI 난이도 선택", {
+      .text(GAME_WIDTH / 2, difficultyLabelY, "AI 난이도 선택", {
         fontFamily: UI_FONT,
         fontSize: "15px",
         fontStyle: "bold",
@@ -107,33 +120,41 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2);
 
-    const startX = GAME_WIDTH / 2 - 316;
     DIFFICULTIES.forEach((difficulty, index) => {
       createButton(
         this,
-        startX + index * 316,
-        383,
+        startX + index * difficultyGap,
+        difficultyY,
         difficulty.label,
         () => this.startBattle(difficulty.id),
         {
-          width: 282,
-          height: 82,
+          width: difficultyWidth,
+          height: IS_COMPACT_LAYOUT ? 76 : 82,
           color: difficulty.color,
           hoverColor: difficulty.hoverColor,
-          fontSize: 22,
+          fontSize: IS_COMPACT_LAYOUT ? 19 : 22,
           subtitle: difficulty.subtitle,
         },
       ).setDepth(3);
     });
 
     this.add
-      .rectangle(GAME_WIDTH / 2, 510, 770, 1, 0xffffff, 0.12)
+      .rectangle(
+        GAME_WIDTH / 2,
+        IS_COMPACT_LAYOUT ? 454 : 510,
+        IS_COMPACT_LAYOUT ? 610 : 770,
+        1,
+        0xffffff,
+        0.12,
+      )
       .setDepth(2);
     this.add
       .text(
         GAME_WIDTH / 2,
-        552,
-        "방향키 / WASD로 이동     SPACE로 물풍선     E로 바늘 사용",
+        IS_COMPACT_LAYOUT ? 500 : 552,
+        IS_COMPACT_LAYOUT
+          ? "화면 버튼으로 이동 · 물풍선으로 공격 · ⛶ 전체화면"
+          : "방향키 / WASD로 이동     SPACE로 물풍선     E로 바늘 사용",
         {
           fontFamily: UI_FONT,
           fontSize: "14px",
@@ -145,7 +166,7 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        614,
+        IS_COMPACT_LAYOUT ? 560 : 614,
         "15 × 13 NEON GARDEN  ·  LOCAL 1 VS 1  ·  NO SERVER",
         {
           fontFamily: UI_FONT,
@@ -160,7 +181,7 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        672,
+        IS_COMPACT_LAYOUT ? 622 : 672,
         "원작 에셋을 사용하지 않은 독립 프로토타입",
         {
           fontFamily: UI_FONT,
@@ -184,7 +205,11 @@ export class MenuScene extends Phaser.Scene {
     this.backgroundGraphics.fillStyle(0x164a76, 0.16);
     this.backgroundGraphics.fillCircle(120, 40, 340);
     this.backgroundGraphics.fillStyle(0x711d59, 0.12);
-    this.backgroundGraphics.fillCircle(1030, 700, 390);
+    this.backgroundGraphics.fillCircle(
+      GAME_WIDTH - 70,
+      GAME_HEIGHT - 20,
+      390,
+    );
 
     for (const bubble of this.bubbles) {
       bubble.y -= bubble.speed * seconds;

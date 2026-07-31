@@ -4,12 +4,23 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta
       name="description"
       content="로컬에서 AI와 대결하는 물풍선 아케이드 게임"
     />
+    <meta name="theme-color" content="#080d22" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Bubble Battle" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/app-icon.svg" type="image/svg+xml" />
     <title>Bubble Battle</title>
   </head>
   <body>
@@ -101,6 +112,25 @@
         <span>일시정지 <kbd>Esc</kbd></span>
       </p>
     </main>
+    <button
+      class="mobile-fullscreen"
+      type="button"
+      data-fullscreen-toggle
+      aria-label="전체화면 전환"
+      aria-pressed="false"
+    >
+      <span class="mobile-fullscreen-icon" aria-hidden="true">⛶</span>
+      <span data-fullscreen-label>전체화면</span>
+    </button>
+    <aside
+      class="fullscreen-hint"
+      data-fullscreen-hint
+      role="status"
+      aria-live="polite"
+    >
+      <strong>Safari 전체화면</strong>
+      <span>공유 버튼 → ‘홈 화면에 추가’ 후 실행해 주세요.</span>
+    </aside>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

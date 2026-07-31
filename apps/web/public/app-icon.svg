@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="background" x1="68" y1="48" x2="448" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#152c55"/>
+      <stop offset="1" stop-color="#080d22"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="152" y1="124" x2="362" y2="382" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#90f7ff"/>
+      <stop offset=".5" stop-color="#36d7eb"/>
+      <stop offset="1" stop-color="#147ba8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#background)"/>
+  <circle cx="256" cy="274" r="142" fill="#06142b" opacity=".45"/>
+  <circle cx="256" cy="262" r="130" fill="url(#bubble)"/>
+  <ellipse cx="218" cy="213" rx="42" ry="28" fill="#dfffff" opacity=".9"/>
+  <path d="M320 156c18-42 47-61 82-52-25 17-35 39-30 67" fill="none" stroke="#8ff2ff" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="408" cy="95" r="19" fill="#ff6f99"/>
+  <circle cx="216" cy="274" r="13" fill="#09243e"/>
+  <circle cx="296" cy="274" r="13" fill="#09243e"/>
+  <path d="M207 326c28 31 70 31 98 0" fill="none" stroke="#09243e" stroke-width="15" stroke-linecap="round"/>
+</svg>

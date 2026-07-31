@@ -1,0 +1,20 @@
+{
+  "name": "Bubble Battle",
+  "short_name": "Bubble Battle",
+  "description": "AI와 대결하는 로컬 물풍선 아케이드 게임",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#080d22",
+  "theme_color": "#080d22",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

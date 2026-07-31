@@ -1,9 +1,15 @@
 import { TILE_UNITS } from "@bubble-battle/game-core";
 
-export const GAME_WIDTH = 1100;
-export const GAME_HEIGHT = 720;
-export const BOARD_X = 34;
-export const BOARD_Y = 48;
+const hasCompactPointer =
+  window.matchMedia("(pointer: coarse)").matches ||
+  (navigator.maxTouchPoints > 0 &&
+    Math.min(window.screen.width, window.screen.height) <= 1_024);
+
+export const IS_COMPACT_LAYOUT = hasCompactPointer;
+export const GAME_WIDTH = IS_COMPACT_LAYOUT ? 800 : 1100;
+export const GAME_HEIGHT = IS_COMPACT_LAYOUT ? 680 : 720;
+export const BOARD_X = IS_COMPACT_LAYOUT ? 40 : 34;
+export const BOARD_Y = IS_COMPACT_LAYOUT ? 28 : 48;
 export const TILE_SIZE = 48;
 export const BOARD_WIDTH = 15 * TILE_SIZE;
 export const BOARD_HEIGHT = 13 * TILE_SIZE;
