@@ -18,6 +18,10 @@ export const SIDEBAR_X = 790;
 export const UI_FONT =
   '"Arial Rounded MT Bold", "Apple SD Gothic Neo", system-ui, sans-serif';
 
+export function isPortraitLayout(): boolean {
+  return IS_COMPACT_LAYOUT && window.innerHeight > window.innerWidth;
+}
+
 export function worldToScreenX(worldX: number): number {
   return BOARD_X + (worldX / TILE_UNITS) * TILE_SIZE;
 }

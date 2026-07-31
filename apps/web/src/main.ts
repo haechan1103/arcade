@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 import { setupMobileFullscreen } from "./game/input/MobileFullscreen";
+import { setupMobileInteractionGuards } from "./game/input/MobileInteraction";
 import { BattleScene } from "./game/scenes/BattleScene";
 import { MenuScene } from "./game/scenes/MenuScene";
 import {
   GAME_HEIGHT,
   GAME_WIDTH,
   IS_COMPACT_LAYOUT,
+  isPortraitLayout,
 } from "./game/layout";
 import "./style.css";
 
@@ -13,6 +15,7 @@ document.documentElement.dataset.gameLayout = IS_COMPACT_LAYOUT
   ? "compact"
   : "standard";
 setupMobileFullscreen();
+setupMobileInteractionGuards();
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -53,5 +56,6 @@ window.__BUBBLE_BATTLE__ = {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     compact: IS_COMPACT_LAYOUT,
+    portrait: isPortraitLayout(),
   },
 };

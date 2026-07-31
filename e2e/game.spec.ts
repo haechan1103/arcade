@@ -5,6 +5,7 @@ interface DebugPlayer {
   x: number;
   y: number;
   status: string;
+  speedLevel: number;
 }
 
 interface DebugState {
@@ -29,6 +30,7 @@ interface DebugLayout {
   width: number;
   height: number;
   compact: boolean;
+  portrait: boolean;
 }
 
 async function state(page: Page): Promise<DebugState> {
@@ -109,6 +111,7 @@ test("menu starts a playable local match", async ({ page }) => {
     width: 1_100,
     height: 720,
     compact: false,
+    portrait: false,
   });
   await page.screenshot({
     path: "test-results/menu.png",
@@ -269,6 +272,7 @@ test.describe("mobile touch controls", () => {
       width: 800,
       height: 680,
       compact: true,
+      portrait: false,
     });
     await expect(
       page.locator("[data-fullscreen-toggle]"),
@@ -286,23 +290,52 @@ test.describe("mobile touch controls", () => {
     const humanBefore = (await state(page)).players.find(
       (player) => player.id === 1,
     );
-    const right = page.locator('[data-control="right"]');
-    await right.dispatchEvent("pointerdown", {
+    expect(humanBefore?.speedLevel).toBe(1);
+
+    const joystick = page.locator("[data-joystick]");
+    await expect(joystick).toBeVisible();
+    const joystickBox = await joystick.boundingBox();
+    if (joystickBox === null) {
+      throw new Error("Mobile joystick is not visible.");
+    }
+    await joystick.dispatchEvent("pointerdown", {
       pointerId: 11,
       pointerType: "touch",
       isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 18,
+      clientY: joystickBox.y + joystickBox.height / 2,
     });
     await page.waitForTimeout(360);
-    await right.dispatchEvent("pointerup", {
+    await joystick.dispatchEvent("pointerup", {
       pointerId: 11,
       pointerType: "touch",
       isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 18,
+      clientY: joystickBox.y + joystickBox.height / 2,
     });
 
     const humanAfter = (await state(page)).players.find(
       (player) => player.id === 1,
     );
     expect(humanAfter?.x).toBeGreaterThan(humanBefore?.x ?? 0);
+    await expect(joystick).toHaveAttribute("data-direction", "idle");
+
+    expect(
+      await joystick.evaluate((element) => {
+        const contextMenu = new Event("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+        });
+        element.dispatchEvent(contextMenu);
+        return {
+          contextMenuPrevented: contextMenu.defaultPrevented,
+          userSelect: getComputedStyle(element).userSelect,
+        };
+      }),
+    ).toEqual({
+      contextMenuPrevented: true,
+      userSelect: "none",
+    });
 
     await page.locator('[data-control="balloon"]').tap();
     await expect
@@ -343,6 +376,20 @@ test.describe("mobile portrait layout", () => {
     page,
   }) => {
     await page.goto("/");
+    expect(
+      await page.evaluate(
+        () => window.__BUBBLE_BATTLE__.layout as DebugLayout,
+      ),
+    ).toEqual({
+      width: 800,
+      height: 680,
+      compact: true,
+      portrait: true,
+    });
+    await page.screenshot({
+      path: "test-results/mobile-portrait-menu.png",
+      fullPage: true,
+    });
     await expect(
       page.locator("[data-fullscreen-toggle]"),
     ).toBeVisible();

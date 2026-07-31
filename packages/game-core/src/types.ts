@@ -106,6 +106,7 @@ export interface NewGameOptions {
   seed: number;
   map?: MapDefinition;
   playerNames?: readonly [string, string];
+  initialSpeedLevel?: number;
 }
 
 export type GameEvent =

@@ -12,6 +12,7 @@ declare global {
         width: number;
         height: number;
         compact: boolean;
+        portrait: boolean;
       };
     };
   }

@@ -45,6 +45,24 @@ function advance(state: GameState, ticks: number): void {
 }
 
 describe("deterministic simulation", () => {
+  it("applies and clamps a configured starting speed", () => {
+    const boosted = createGameState({
+      seed: 10,
+      initialSpeedLevel: 1,
+    });
+    const clamped = createGameState({
+      seed: 10,
+      initialSpeedLevel: 999,
+    });
+
+    expect(boosted.players.map((player) => player.speedLevel)).toEqual([
+      1, 1,
+    ]);
+    expect(clamped.players.map((player) => player.speedLevel)).toEqual([
+      6, 6,
+    ]);
+  });
+
   it("produces the same state for the same seed and inputs", () => {
     const first = createGameState({ seed: 0x12345678 });
     const second = createGameState({ seed: 0x12345678 });

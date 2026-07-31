@@ -24,6 +24,7 @@ import {
   SIDEBAR_X,
   TILE_SIZE,
   UI_FONT,
+  isPortraitLayout,
   worldToScreenX,
   worldToScreenY,
 } from "../layout";
@@ -249,6 +250,8 @@ export class BattleRenderer {
       800,
     )
       .setOrigin(0.5)
+      .setAlign("center")
+      .setWordWrapWidth(BOARD_WIDTH - 100, true)
       .setDepth(21)
       .setVisible(false);
   }
@@ -994,6 +997,7 @@ export class BattleRenderer {
   }
 
   private drawOverlay(): void {
+    const portrait = isPortraitLayout();
     this.overlayGraphics.clear();
     if (this.overlayKind === "none") {
       this.overlayPrimary.setVisible(false);
@@ -1006,6 +1010,7 @@ export class BattleRenderer {
       .setVisible(true);
     this.overlaySecondary
       .setText(this.overlaySubtitle)
+      .setFontSize(portrait ? 26 : IS_COMPACT_LAYOUT ? 21 : 16)
       .setVisible(this.overlaySubtitle.length > 0);
 
     if (this.overlayKind === "pause") {
@@ -1033,7 +1038,9 @@ export class BattleRenderer {
         175,
         24,
       );
-      this.overlayPrimary.setFontSize(44);
+      this.overlayPrimary.setFontSize(
+        portrait ? 50 : IS_COMPACT_LAYOUT ? 46 : 44,
+      );
     } else {
       this.overlayGraphics.fillStyle(0x061225, 0.58);
       this.overlayGraphics.fillCircle(
@@ -1047,7 +1054,9 @@ export class BattleRenderer {
         BOARD_Y + BOARD_HEIGHT / 2 - 10,
         86,
       );
-      this.overlayPrimary.setFontSize(76);
+      this.overlayPrimary.setFontSize(
+        portrait ? 86 : IS_COMPACT_LAYOUT ? 80 : 76,
+      );
     }
   }
 }

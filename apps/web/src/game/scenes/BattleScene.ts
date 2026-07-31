@@ -20,6 +20,7 @@ import {
   BOARD_Y,
   GAME_HEIGHT,
   GAME_WIDTH,
+  IS_COMPACT_LAYOUT,
   UI_FONT,
 } from "../layout";
 import { BattleRenderer } from "../render/BattleRenderer";
@@ -71,6 +72,7 @@ export class BattleScene extends Phaser.Scene {
     this.state = createGameState({
       seed,
       playerNames: ["플레이어", this.botName()],
+      initialSpeedLevel: IS_COMPACT_LAYOUT ? 1 : 0,
     });
     this.registry.set("debug:state", this.state);
     this.bot = new BotController(2, this.difficulty, seed);
@@ -86,7 +88,7 @@ export class BattleScene extends Phaser.Scene {
     this.battleRenderer.setOverlay(
       "countdown",
       "3",
-      "빈 공간을 만들고 먼저 성장하세요",
+      this.countdownMessage(3),
     );
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -125,7 +127,11 @@ export class BattleScene extends Phaser.Scene {
       this.battleRenderer.setOverlay(
         this.paused ? "pause" : "none",
         this.paused ? "PAUSED" : "",
-        this.paused ? "ESC를 눌러 계속하기" : "",
+        this.paused
+          ? IS_COMPACT_LAYOUT
+            ? "일시정지 버튼으로 계속하기"
+            : "ESC를 눌러 계속하기"
+          : "",
       );
     }
 
@@ -190,19 +196,19 @@ export class BattleScene extends Phaser.Scene {
       this.battleRenderer.setOverlay(
         "countdown",
         "3",
-        "빈 공간을 만들고 먼저 성장하세요",
+        this.countdownMessage(3),
       );
     } else if (this.countdownMs > 1600) {
       this.battleRenderer.setOverlay(
         "countdown",
         "2",
-        "물줄기는 단단한 벽에서 멈춥니다",
+        this.countdownMessage(2),
       );
     } else if (this.countdownMs > 800) {
       this.battleRenderer.setOverlay(
         "countdown",
         "1",
-        "자신의 물풍선에서도 반드시 탈출하세요",
+        this.countdownMessage(1),
       );
     } else if (this.countdownMs > 0) {
       this.battleRenderer.setOverlay("countdown", "BUBBLE!", "");
@@ -368,5 +374,21 @@ export class BattleScene extends Phaser.Scene {
       return "집요한 버블봇";
     }
     return "영리한 버블봇";
+  }
+
+  private countdownMessage(step: 1 | 2 | 3): string {
+    if (IS_COMPACT_LAYOUT) {
+      return {
+        3: "길을 먼저 확보하세요",
+        2: "벽 뒤는 안전합니다",
+        1: "내 물풍선도 피하세요",
+      }[step];
+    }
+
+    return {
+      3: "빈 공간을 만들고 먼저 성장하세요",
+      2: "물줄기는 단단한 벽에서 멈춥니다",
+      1: "자신의 물풍선에서도 반드시 탈출하세요",
+    }[step];
   }
 }

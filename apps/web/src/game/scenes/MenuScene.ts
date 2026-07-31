@@ -6,6 +6,7 @@ import {
   GAME_WIDTH,
   IS_COMPACT_LAYOUT,
   UI_FONT,
+  isPortraitLayout,
 } from "../layout";
 import { createButton } from "../ui/createButton";
 
@@ -58,17 +59,26 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    const portrait = isPortraitLayout();
     this.cameras.main.setBackgroundColor("#090f28");
     this.backgroundGraphics = this.add.graphics().setDepth(0);
     this.createBubbles();
 
-    const titleSize = IS_COMPACT_LAYOUT ? 68 : 86;
-    const titleTop = IS_COMPACT_LAYOUT ? 80 : 103;
-    const titleBottom = IS_COMPACT_LAYOUT ? 143 : 181;
-    const taglineY = IS_COMPACT_LAYOUT ? 205 : 245;
-    const difficultyLabelY = IS_COMPACT_LAYOUT ? 270 : 307;
-    const difficultyY = IS_COMPACT_LAYOUT ? 362 : 383;
-    const difficultyWidth = IS_COMPACT_LAYOUT ? 216 : 282;
+    const titleSize = portrait ? 62 : IS_COMPACT_LAYOUT ? 68 : 86;
+    const titleTop = portrait ? 58 : IS_COMPACT_LAYOUT ? 80 : 103;
+    const titleBottom = portrait ? 113 : IS_COMPACT_LAYOUT ? 143 : 181;
+    const taglineY = portrait ? 174 : IS_COMPACT_LAYOUT ? 205 : 245;
+    const difficultyLabelY = portrait
+      ? 235
+      : IS_COMPACT_LAYOUT
+        ? 270
+        : 307;
+    const difficultyY = portrait ? 292 : IS_COMPACT_LAYOUT ? 362 : 383;
+    const difficultyWidth = portrait
+      ? 590
+      : IS_COMPACT_LAYOUT
+        ? 216
+        : 282;
     const difficultyGap = IS_COMPACT_LAYOUT ? 230 : 316;
     const startX =
       GAME_WIDTH / 2 -
@@ -100,10 +110,12 @@ export class MenuScene extends Phaser.Scene {
       .text(
         GAME_WIDTH / 2,
         taglineY,
-        "물풍선을 놓고, 길을 만들고, 먼저 상대를 가두세요.",
+        portrait
+          ? "물풍선으로 길을 만들고 AI를 먼저 가두세요."
+          : "물풍선을 놓고, 길을 만들고, 먼저 상대를 가두세요.",
         {
           fontFamily: UI_FONT,
-          fontSize: "18px",
+          fontSize: portrait ? "22px" : "18px",
           color: "#b8cce9",
         },
       )
@@ -113,7 +125,7 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .text(GAME_WIDTH / 2, difficultyLabelY, "AI 난이도 선택", {
         fontFamily: UI_FONT,
-        fontSize: "15px",
+        fontSize: portrait ? "22px" : "15px",
         fontStyle: "bold",
         color: "#7894bd",
       })
@@ -123,17 +135,20 @@ export class MenuScene extends Phaser.Scene {
     DIFFICULTIES.forEach((difficulty, index) => {
       createButton(
         this,
-        startX + index * difficultyGap,
-        difficultyY,
+        portrait
+          ? GAME_WIDTH / 2
+          : startX + index * difficultyGap,
+        portrait ? difficultyY + index * 106 : difficultyY,
         difficulty.label,
         () => this.startBattle(difficulty.id),
         {
           width: difficultyWidth,
-          height: IS_COMPACT_LAYOUT ? 76 : 82,
+          height: portrait ? 94 : IS_COMPACT_LAYOUT ? 76 : 82,
           color: difficulty.color,
           hoverColor: difficulty.hoverColor,
-          fontSize: IS_COMPACT_LAYOUT ? 19 : 22,
+          fontSize: portrait ? 28 : IS_COMPACT_LAYOUT ? 19 : 22,
           subtitle: difficulty.subtitle,
+          subtitleFontSize: portrait ? 20 : 12,
         },
       ).setDepth(3);
     });
@@ -141,8 +156,8 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .rectangle(
         GAME_WIDTH / 2,
-        IS_COMPACT_LAYOUT ? 454 : 510,
-        IS_COMPACT_LAYOUT ? 610 : 770,
+        portrait ? 568 : IS_COMPACT_LAYOUT ? 454 : 510,
+        portrait ? 590 : IS_COMPACT_LAYOUT ? 610 : 770,
         1,
         0xffffff,
         0.12,
@@ -151,49 +166,63 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        IS_COMPACT_LAYOUT ? 500 : 552,
-        IS_COMPACT_LAYOUT
+        portrait ? 610 : IS_COMPACT_LAYOUT ? 500 : 552,
+        portrait
+          ? "가로로 돌리면 더 넓게 플레이할 수 있어요"
+          : IS_COMPACT_LAYOUT
           ? "화면 버튼으로 이동 · 물풍선으로 공격 · ⛶ 전체화면"
           : "방향키 / WASD로 이동     SPACE로 물풍선     E로 바늘 사용",
         {
           fontFamily: UI_FONT,
-          fontSize: "14px",
+          fontSize: portrait ? "20px" : "14px",
           color: "#91a8ca",
         },
       )
       .setOrigin(0.5)
       .setDepth(2);
-    this.add
-      .text(
-        GAME_WIDTH / 2,
-        IS_COMPACT_LAYOUT ? 560 : 614,
-        "15 × 13 NEON GARDEN  ·  LOCAL 1 VS 1  ·  NO SERVER",
-        {
-          fontFamily: UI_FONT,
-          fontSize: "11px",
-          fontStyle: "bold",
-          color: "#4e668c",
-          letterSpacing: 2,
-        },
-      )
-      .setOrigin(0.5)
-      .setDepth(2);
-    this.add
-      .text(
-        GAME_WIDTH / 2,
-        IS_COMPACT_LAYOUT ? 622 : 672,
-        "원작 에셋을 사용하지 않은 독립 프로토타입",
-        {
-          fontFamily: UI_FONT,
-          fontSize: "11px",
-          color: "#435777",
-        },
-      )
-      .setOrigin(0.5)
-      .setDepth(2);
+    if (!portrait) {
+      this.add
+        .text(
+          GAME_WIDTH / 2,
+          IS_COMPACT_LAYOUT ? 560 : 614,
+          "15 × 13 NEON GARDEN  ·  LOCAL 1 VS 1  ·  NO SERVER",
+          {
+            fontFamily: UI_FONT,
+            fontSize: "11px",
+            fontStyle: "bold",
+            color: "#4e668c",
+            letterSpacing: 2,
+          },
+        )
+        .setOrigin(0.5)
+        .setDepth(2);
+      this.add
+        .text(
+          GAME_WIDTH / 2,
+          IS_COMPACT_LAYOUT ? 622 : 672,
+          "원작 에셋을 사용하지 않은 독립 프로토타입",
+          {
+            fontFamily: UI_FONT,
+            fontSize: "11px",
+            color: "#435777",
+          },
+        )
+        .setOrigin(0.5)
+        .setDepth(2);
+    }
 
     const keyboard = this.input.keyboard;
     keyboard?.once("keydown-ENTER", () => this.startBattle("normal"));
+
+    const onViewportResize = (): void => {
+      if (isPortraitLayout() !== portrait) {
+        this.scene.restart();
+      }
+    };
+    window.addEventListener("resize", onViewportResize);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener("resize", onViewportResize);
+    });
   }
 
   update(time: number, delta: number): void {

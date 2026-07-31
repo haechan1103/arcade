@@ -9,6 +9,7 @@ export interface ButtonOptions {
   textColor?: string;
   fontSize?: number;
   subtitle?: string;
+  subtitleFontSize?: number;
 }
 
 export function createButton(
@@ -55,7 +56,7 @@ export function createButton(
       scene.add
         .text(0, 17, options.subtitle, {
           fontFamily: UI_FONT,
-          fontSize: "12px",
+          fontSize: `${options.subtitleFontSize ?? 12}px`,
           color: textColor,
           align: "center",
         })
