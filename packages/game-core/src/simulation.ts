@@ -20,6 +20,7 @@ import {
 } from "./config";
 import {
   balloonAt,
+  blastIntersectsPlayer,
   bodyIntersectsCell,
   CARDINAL_STEPS,
   cellCenter,
@@ -153,15 +154,13 @@ function nearestTileCenter(value: number): number {
   );
 }
 
-function movePlayer(
+function movePlayerInDirection(
   state: GameState,
   player: PlayerState,
-  direction: Direction | null,
-): void {
-  if (direction === null || player.status === "dead") {
-    return;
-  }
-
+  direction: Direction,
+): boolean {
+  const startX = player.x;
+  const startY = player.y;
   player.direction = direction;
   const baseSpeed =
     player.status === "trapped"
@@ -182,6 +181,7 @@ function movePlayer(
       );
     }
     moveAlongAxis(state, player, "x", vector.col * baseSpeed);
+    return player.x !== startX;
   } else {
     const centerX = nearestTileCenter(player.x);
     const offsetX = centerX - player.x;
@@ -194,7 +194,42 @@ function movePlayer(
       );
     }
     moveAlongAxis(state, player, "y", vector.row * baseSpeed);
+    return player.y !== startY;
   }
+}
+
+function movePlayer(
+  state: GameState,
+  player: PlayerState,
+  direction: Direction | null,
+  fallbackDirection: Direction | null,
+): void {
+  if (direction === null || player.status === "dead") {
+    return;
+  }
+
+  const startX = player.x;
+  const startY = player.y;
+  const movedInPrimaryDirection = movePlayerInDirection(
+    state,
+    player,
+    direction,
+  );
+  const primaryIsHorizontal =
+    direction === "left" || direction === "right";
+  const fallbackIsHorizontal =
+    fallbackDirection === "left" || fallbackDirection === "right";
+  if (
+    movedInPrimaryDirection ||
+    fallbackDirection === null ||
+    primaryIsHorizontal === fallbackIsHorizontal
+  ) {
+    return;
+  }
+
+  player.x = startX;
+  player.y = startY;
+  movePlayerInDirection(state, player, fallbackDirection);
 }
 
 function placeBalloon(
@@ -678,7 +713,7 @@ function applyHazards(
     }
 
     const touchesBlast = state.blasts.some((blast) =>
-      blast.cells.some((cell) => bodyIntersectsCell(player, cell)),
+      blast.cells.some((cell) => blastIntersectsPlayer(player, cell)),
     );
     if (touchesBlast) {
       trapPlayer(state, player, "blast", events);
@@ -821,7 +856,13 @@ export function stepGame(
   }
 
   for (const player of state.players) {
-    movePlayer(state, player, inputs[player.id]?.move ?? null);
+    const input = inputs[player.id];
+    movePlayer(
+      state,
+      player,
+      input?.move ?? null,
+      input?.fallbackMove ?? null,
+    );
   }
 
   updateBalloonPassThrough(state);

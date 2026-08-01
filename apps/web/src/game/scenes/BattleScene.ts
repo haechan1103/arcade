@@ -184,6 +184,10 @@ export class BattleScene extends Phaser.Scene {
     const touch = this.touchControls.readInput();
     return {
       move: touch.move ?? keyboard.move,
+      fallbackMove:
+        touch.move === null
+          ? (keyboard.fallbackMove ?? null)
+          : (touch.fallbackMove ?? null),
       placeBalloon:
         touch.placeBalloon || keyboard.placeBalloon,
       useNeedle: touch.useNeedle || keyboard.useNeedle,

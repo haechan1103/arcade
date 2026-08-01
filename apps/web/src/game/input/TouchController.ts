@@ -2,8 +2,25 @@ import type {
   Direction,
   PlayerInput,
 } from "@bubble-battle/game-core";
+import {
+  resolveJoystickDirection,
+  resolveJoystickFallbackDirection,
+} from "./JoystickMath";
 
 type TouchAction = "balloon" | "needle" | "pause" | "mute";
+
+interface JoystickGesture {
+  originX: number;
+  originY: number;
+  maxDistance: number;
+}
+
+const DIRECTION_LABEL: Record<Direction, string> = {
+  up: "위",
+  right: "오른쪽",
+  down: "아래",
+  left: "왼쪽",
+};
 
 export class TouchController {
   private readonly root: HTMLElement | null;
@@ -12,7 +29,9 @@ export class TouchController {
   private readonly joystickKnob: HTMLElement | null;
   private readonly cleanup: Array<() => void> = [];
   private joystickPointerId: number | null = null;
+  private joystickGesture: JoystickGesture | null = null;
   private joystickDirection: Direction | null = null;
+  private joystickFallbackDirection: Direction | null = null;
   private balloonQueued = false;
   private needleQueued = false;
   private pauseQueued = false;
@@ -99,6 +118,7 @@ export class TouchController {
   readInput(): PlayerInput {
     const input: PlayerInput = {
       move: this.joystickDirection,
+      fallbackMove: this.joystickFallbackDirection,
       placeBalloon: this.balloonQueued,
       useNeedle: this.needleQueued,
     };
@@ -155,6 +175,7 @@ export class TouchController {
       }
 
       this.joystickPointerId = event.pointerId;
+      this.beginJoystickGesture(event);
       joystick.classList.add("is-active");
       try {
         joystick.setPointerCapture(event.pointerId);
@@ -204,15 +225,16 @@ export class TouchController {
   }
 
   private updateJoystick(event: PointerEvent): void {
-    if (this.joystick === null) {
+    if (this.joystick === null || this.joystickGesture === null) {
       return;
     }
 
-    const bounds = this.joystick.getBoundingClientRect();
-    const deltaX = event.clientX - (bounds.left + bounds.width / 2);
-    const deltaY = event.clientY - (bounds.top + bounds.height / 2);
+    const samples = event.getCoalescedEvents?.() ?? [];
+    const sample = samples.at(-1) ?? event;
+    const deltaX = sample.clientX - this.joystickGesture.originX;
+    const deltaY = sample.clientY - this.joystickGesture.originY;
     const distance = Math.hypot(deltaX, deltaY);
-    const maxDistance = Math.min(bounds.width, bounds.height) * 0.25;
+    const maxDistance = this.joystickGesture.maxDistance;
     const scale = distance > maxDistance ? maxDistance / distance : 1;
     const knobX = deltaX * scale;
     const knobY = deltaY * scale;
@@ -222,30 +244,73 @@ export class TouchController {
         `translate(-50%, -50%) translate3d(${knobX}px, ${knobY}px, 0)`;
     }
 
-    const deadZone = Math.max(
-      6,
-      Math.min(bounds.width, bounds.height) * 0.055,
+    const vector = {
+      x: deltaX / maxDistance,
+      y: deltaY / maxDistance,
+    };
+    this.joystickDirection = resolveJoystickDirection(
+      vector,
+      this.joystickDirection,
     );
-    if (distance < deadZone) {
-      this.joystickDirection = null;
-    } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      this.joystickDirection = deltaX > 0 ? "right" : "left";
-    } else {
-      this.joystickDirection = deltaY > 0 ? "down" : "up";
-    }
+    this.joystickFallbackDirection =
+      resolveJoystickFallbackDirection(
+        vector,
+        this.joystickDirection,
+      );
     this.joystick.dataset.direction =
       this.joystickDirection ?? "idle";
+    this.joystick.dataset.fallbackDirection =
+      this.joystickFallbackDirection ?? "idle";
+    this.joystick.setAttribute(
+      "aria-label",
+      this.joystickDirection === null
+        ? "이동 조이스틱"
+        : [
+            `이동 조이스틱: ${DIRECTION_LABEL[this.joystickDirection]}`,
+            this.joystickFallbackDirection === null
+              ? ""
+              : `막히면 ${DIRECTION_LABEL[this.joystickFallbackDirection]}`,
+          ]
+            .filter((label) => label.length > 0)
+            .join(", "),
+    );
   }
 
   private resetJoystick(): void {
     this.joystickPointerId = null;
+    this.joystickGesture = null;
     this.joystickDirection = null;
+    this.joystickFallbackDirection = null;
     this.joystick?.classList.remove("is-active");
     if (this.joystick !== null) {
       this.joystick.dataset.direction = "idle";
+      this.joystick.dataset.fallbackDirection = "idle";
+      this.joystick.setAttribute("aria-label", "이동 조이스틱");
     }
     if (this.joystickKnob !== null) {
       this.joystickKnob.style.transform = "";
     }
+  }
+
+  private beginJoystickGesture(event: PointerEvent): void {
+    if (this.joystick === null) {
+      return;
+    }
+
+    const bounds = this.joystick.getBoundingClientRect();
+    const centerX = bounds.left + bounds.width / 2;
+    const centerY = bounds.top + bounds.height / 2;
+    const distanceFromCenter = Math.hypot(
+      event.clientX - centerX,
+      event.clientY - centerY,
+    );
+    const size = Math.min(bounds.width, bounds.height);
+    const grabbedKnob = distanceFromCenter <= size * 0.23;
+
+    this.joystickGesture = {
+      originX: grabbedKnob ? event.clientX : centerX,
+      originY: grabbedKnob ? event.clientY : centerY,
+      maxDistance: size * 0.22,
+    };
   }
 }

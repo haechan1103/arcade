@@ -1,4 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import {
+  PLAYER_BODY_HALF,
+  TILE_UNITS,
+} from "@bubble-battle/game-core";
 
 interface DebugPlayer {
   id: number;
@@ -12,6 +16,8 @@ interface DebugState {
   seed: number;
   tick: number;
   phase: string;
+  width: number;
+  tiles: Array<{ kind: string }>;
   players: DebugPlayer[];
   balloons: Array<{
     ownerId: number;
@@ -305,13 +311,46 @@ test.describe("mobile touch controls", () => {
       clientX: joystickBox.x + joystickBox.width / 2 + 18,
       clientY: joystickBox.y + joystickBox.height / 2,
     });
+    await expect(joystick).toHaveAttribute("data-direction", "idle");
+    await joystick.dispatchEvent("pointermove", {
+      pointerId: 11,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 36,
+      clientY: joystickBox.y + joystickBox.height / 2,
+    });
+    await expect(joystick).toHaveAttribute("data-direction", "right");
+    await expect(joystick).toHaveAttribute(
+      "data-fallback-direction",
+      "idle",
+    );
     await page.waitForTimeout(360);
+    await joystick.dispatchEvent("pointermove", {
+      pointerId: 11,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 36,
+      clientY: joystickBox.y + joystickBox.height / 2 + 20,
+    });
+    await expect(joystick).toHaveAttribute("data-direction", "right");
+    await expect(joystick).toHaveAttribute(
+      "data-fallback-direction",
+      "down",
+    );
+    await joystick.dispatchEvent("pointermove", {
+      pointerId: 11,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 28,
+      clientY: joystickBox.y + joystickBox.height / 2 + 28,
+    });
+    await expect(joystick).toHaveAttribute("data-direction", "down");
     await joystick.dispatchEvent("pointerup", {
       pointerId: 11,
       pointerType: "touch",
       isPrimary: true,
-      clientX: joystickBox.x + joystickBox.width / 2 + 18,
-      clientY: joystickBox.y + joystickBox.height / 2,
+      clientX: joystickBox.x + joystickBox.width / 2 + 28,
+      clientY: joystickBox.y + joystickBox.height / 2 + 28,
     });
 
     const humanAfter = (await state(page)).players.find(
@@ -319,6 +358,10 @@ test.describe("mobile touch controls", () => {
     );
     expect(humanAfter?.x).toBeGreaterThan(humanBefore?.x ?? 0);
     await expect(joystick).toHaveAttribute("data-direction", "idle");
+    await expect(joystick).toHaveAttribute(
+      "data-fallback-direction",
+      "idle",
+    );
 
     expect(
       await joystick.evaluate((element) => {
@@ -336,6 +379,63 @@ test.describe("mobile touch controls", () => {
       contextMenuPrevented: true,
       userSelect: "none",
     });
+
+    await page.evaluate(
+      ({ tileUnits, bodyHalf }) => {
+        const debugState =
+          window.__BUBBLE_BATTLE__.getState() as DebugState;
+        const human = debugState.players.find(
+          (player) => player.id === 1,
+        );
+        if (human === undefined) {
+          return;
+        }
+        human.x = 2 * tileUnits - bodyHalf;
+        human.y = tileUnits + tileUnits / 2;
+        const wall = debugState.tiles[debugState.width + 2];
+        if (wall !== undefined) {
+          wall.kind = "hard";
+        }
+      },
+      { tileUnits: TILE_UNITS, bodyHalf: PLAYER_BODY_HALF },
+    );
+    const wallSlideStart = (await state(page)).players.find(
+      (player) => player.id === 1,
+    );
+    await joystick.dispatchEvent("pointerdown", {
+      pointerId: 12,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 10,
+      clientY: joystickBox.y + joystickBox.height / 2,
+    });
+    await joystick.dispatchEvent("pointermove", {
+      pointerId: 12,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 34,
+      clientY: joystickBox.y + joystickBox.height / 2 + 22,
+    });
+    await expect(joystick).toHaveAttribute("data-direction", "right");
+    await expect(joystick).toHaveAttribute(
+      "data-fallback-direction",
+      "down",
+    );
+    await page.waitForTimeout(180);
+    await joystick.dispatchEvent("pointerup", {
+      pointerId: 12,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: joystickBox.x + joystickBox.width / 2 + 34,
+      clientY: joystickBox.y + joystickBox.height / 2 + 22,
+    });
+    const wallSlideEnd = (await state(page)).players.find(
+      (player) => player.id === 1,
+    );
+    expect(wallSlideEnd?.x).toBeLessThanOrEqual(
+      wallSlideStart?.x ?? 0,
+    );
+    expect(wallSlideEnd?.y).toBeGreaterThan(wallSlideStart?.y ?? 0);
 
     await page.locator('[data-control="balloon"]').tap();
     await expect

@@ -28,6 +28,7 @@ export interface MapDefinition {
 
 export interface PlayerInput {
   move: Direction | null;
+  fallbackMove?: Direction | null;
   placeBalloon: boolean;
   useNeedle: boolean;
 }

@@ -4,6 +4,7 @@ export const TICK_MS = 1000 / TICK_RATE;
 export const TILE_UNITS = 1024;
 export const HALF_TILE = TILE_UNITS / 2;
 export const PLAYER_BODY_HALF = 282;
+export const BLAST_HITBOX_HALF = 196;
 export const CORNER_ASSIST_UNITS = 340;
 
 export const BALLOON_FUSE_TICKS = 75;

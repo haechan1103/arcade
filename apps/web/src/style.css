@@ -261,6 +261,45 @@ body::before {
   content: "";
 }
 
+.touch-joystick-direction {
+  position: absolute;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid rgba(190, 238, 255, 0.48);
+  border-left: 2px solid rgba(190, 238, 255, 0.48);
+  opacity: 0.42;
+  transition:
+    border-color 80ms ease,
+    filter 80ms ease,
+    opacity 80ms ease,
+    transform 80ms ease;
+}
+
+.touch-joystick-direction.is-up {
+  top: 13px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.touch-joystick-direction.is-right {
+  top: 50%;
+  right: 13px;
+  transform: translateY(-50%) rotate(135deg);
+}
+
+.touch-joystick-direction.is-down {
+  bottom: 13px;
+  left: 50%;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+.touch-joystick-direction.is-left {
+  top: 50%;
+  left: 13px;
+  transform: translateY(-50%) rotate(315deg);
+}
+
 .touch-joystick-knob {
   position: absolute;
   top: 50%;
@@ -278,6 +317,16 @@ body::before {
   transform: translate(-50%, -50%);
   transition: transform 70ms ease-out;
   will-change: transform;
+  z-index: 2;
+}
+
+.touch-joystick-knob::after {
+  position: absolute;
+  inset: 17px;
+  border: 1px solid rgba(231, 252, 255, 0.38);
+  border-radius: 50%;
+  background: rgba(8, 72, 104, 0.18);
+  content: "";
 }
 
 .touch-joystick.is-active .touch-joystick-knob {
@@ -293,6 +342,44 @@ body::before {
     0 9px 24px rgba(0, 0, 0, 0.36),
     0 0 24px rgba(64, 211, 240, 0.16),
     inset 0 0 0 9px rgba(88, 176, 220, 0.08);
+}
+
+.touch-joystick[data-fallback-direction="up"] .is-up,
+.touch-joystick[data-fallback-direction="right"] .is-right,
+.touch-joystick[data-fallback-direction="down"] .is-down,
+.touch-joystick[data-fallback-direction="left"] .is-left {
+  z-index: 2;
+  border-color: #74eaff;
+  filter: drop-shadow(0 0 4px rgba(99, 234, 255, 0.78));
+  opacity: 0.82;
+}
+
+.touch-joystick[data-direction="up"] .is-up,
+.touch-joystick[data-direction="right"] .is-right,
+.touch-joystick[data-direction="down"] .is-down,
+.touch-joystick[data-direction="left"] .is-left {
+  z-index: 3;
+  border-color: #063653;
+  filter:
+    drop-shadow(0 1px rgba(255, 255, 255, 0.72))
+    drop-shadow(0 0 4px rgba(99, 234, 255, 0.72));
+  opacity: 1;
+}
+
+.touch-joystick[data-direction="up"] .is-up {
+  transform: translateX(-50%) rotate(45deg) scale(1.22);
+}
+
+.touch-joystick[data-direction="right"] .is-right {
+  transform: translateY(-50%) rotate(135deg) scale(1.22);
+}
+
+.touch-joystick[data-direction="down"] .is-down {
+  transform: translateX(-50%) rotate(225deg) scale(1.22);
+}
+
+.touch-joystick[data-direction="left"] .is-left {
+  transform: translateY(-50%) rotate(315deg) scale(1.22);
 }
 
 .touch-actions {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   BALLOON_FUSE_TICKS,
+  BLAST_HITBOX_HALF,
   HALF_TILE,
+  PLAYER_BODY_HALF,
   STORM_START_TICK,
   TILE_UNITS,
   createGameState,
@@ -97,6 +99,58 @@ describe("deterministic simulation", () => {
         expect(tile?.kind).toBe(mirror?.kind);
       }
     }
+  });
+});
+
+describe("movement", () => {
+  it("uses the diagonal fallback axis when the primary path is blocked", () => {
+    const map = mapFromAscii("wall-slide", "Wall Slide", [
+      "#######",
+      "#....2#",
+      "#1#...#",
+      "#.....#",
+      "#######",
+    ]);
+    const state = createGameState({ seed: 25, map });
+    const human = state.players[0]!;
+    human.x = 2 * TILE_UNITS - PLAYER_BODY_HALF;
+    const startX = human.x;
+    const startY = human.y;
+
+    stepGame(state, {
+      1: {
+        move: "right",
+        fallbackMove: "up",
+        placeBalloon: false,
+        useNeedle: false,
+      },
+      2: noInput(),
+    });
+
+    expect(human.x).toBeLessThanOrEqual(startX);
+    expect(human.y).toBeLessThan(startY);
+    expect(human.direction).toBe("up");
+  });
+
+  it("does not move both axes when the primary path is open", () => {
+    const state = createOpenGame();
+    const human = state.players[0]!;
+    const startX = human.x;
+    const startY = human.y;
+
+    stepGame(state, {
+      1: {
+        move: "right",
+        fallbackMove: "down",
+        placeBalloon: false,
+        useNeedle: false,
+      },
+      2: noInput(),
+    });
+
+    expect(human.x).toBeGreaterThan(startX);
+    expect(human.y).toBe(startY);
+    expect(human.direction).toBe("right");
   });
 });
 
@@ -272,6 +326,27 @@ describe("players and items", () => {
     expect(state.players[0]?.invulnerableUntilTick).toBeGreaterThan(
       state.tick,
     );
+  });
+
+  it("ignores a grazing blast until it reaches the player core", () => {
+    const state = createOpenGame();
+    const human = state.players[0]!;
+    state.blasts.push({
+      id: 70,
+      balloonId: 71,
+      ownerId: 2,
+      cells: [{ col: 2, row: 1 }],
+      createdTick: 0,
+      expireTick: 20,
+    });
+    human.x = 2 * TILE_UNITS - BLAST_HITBOX_HALF;
+
+    stepGame(state, emptyInputs());
+    expect(human.status).toBe("alive");
+
+    human.x += 1;
+    stepGame(state, emptyInputs());
+    expect(human.status).toBe("trapped");
   });
 
   it("eliminates a trapped player when their timer expires", () => {

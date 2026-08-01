@@ -1,4 +1,5 @@
 import {
+  BLAST_HITBOX_HALF,
   HALF_TILE,
   PLAYER_BODY_HALF,
   TILE_UNITS,
@@ -67,16 +68,31 @@ export function bodyIntersectsCell(
   player: PlayerState,
   cell: Cell,
 ): boolean {
+  return playerHitboxIntersectsCell(player, cell, PLAYER_BODY_HALF);
+}
+
+export function blastIntersectsPlayer(
+  player: PlayerState,
+  cell: Cell,
+): boolean {
+  return playerHitboxIntersectsCell(player, cell, BLAST_HITBOX_HALF);
+}
+
+function playerHitboxIntersectsCell(
+  player: PlayerState,
+  cell: Cell,
+  hitboxHalf: number,
+): boolean {
   const left = cell.col * TILE_UNITS;
   const top = cell.row * TILE_UNITS;
   const right = left + TILE_UNITS;
   const bottom = top + TILE_UNITS;
 
   return (
-    player.x + PLAYER_BODY_HALF > left &&
-    player.x - PLAYER_BODY_HALF < right &&
-    player.y + PLAYER_BODY_HALF > top &&
-    player.y - PLAYER_BODY_HALF < bottom
+    player.x + hitboxHalf > left &&
+    player.x - hitboxHalf < right &&
+    player.y + hitboxHalf > top &&
+    player.y - hitboxHalf < bottom
   );
 }
 
