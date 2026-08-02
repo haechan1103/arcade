@@ -21,6 +21,7 @@ import {
   CHARACTER_SHEET,
   OBJECT_FRAME,
   OBJECT_SHEET,
+  WARNING_BALLOON,
 } from "../assets";
 import {
   BOARD_HEIGHT,
@@ -86,6 +87,7 @@ const PICKUP_FRAME: Readonly<Record<ItemType, number>> = {
 
 const CHARACTER_SIZE = 58;
 const WALK_FRAME_MS = 125;
+const BALLOON_WARNING_TICKS = Math.round(TICK_RATE * 1.25);
 
 const BOT_MODE_LABELS: Record<AiDebugInfo["mode"], string> = {
   escape: "위험 회피 중",
@@ -847,6 +849,20 @@ export class BattleRenderer {
       balloon.explodeTick - currentTick,
     );
     const urgency = 1 - Math.min(1, remaining / 75);
+    const warningActive = remaining <= BALLOON_WARNING_TICKS;
+    const warningProgress = warningActive
+      ? 1 - remaining / BALLOON_WARNING_TICKS
+      : 0;
+    const warningElapsedTicks = Math.max(
+      0,
+      BALLOON_WARNING_TICKS - remaining,
+    );
+    const warningBlinkTicks = Math.max(
+      3,
+      Math.round(6 - warningProgress * 3),
+    );
+    const warningBright =
+      Math.floor(warningElapsedTicks / warningBlinkTicks) % 2 === 0;
     const pulse =
       Math.sin(elapsedMs * (0.009 + urgency * 0.012)) *
       (1.2 + urgency * 2.5);
@@ -864,23 +880,48 @@ export class BattleRenderer {
           alpha: 0.62,
         },
       );
+      const warningTextureReady =
+        warningActive &&
+        this.scene.textures.exists(WARNING_BALLOON);
+      const warningSizeOffset = warningTextureReady
+        ? warningBright
+          ? 2.4 + warningProgress * 1.4
+          : -0.6
+        : 0;
       this.drawSprite(
-        OBJECT_SHEET,
-        OBJECT_FRAME.balloon,
+        warningTextureReady ? WARNING_BALLOON : OBJECT_SHEET,
+        warningTextureReady ? 0 : OBJECT_FRAME.balloon,
         centerX,
         centerY,
         {
-          width: 49 + pulse * 0.35,
-          height: 49 + pulse * 0.35,
+          width: 49 + pulse * 0.25 + warningSizeOffset,
+          height: 49 + pulse * 0.25 + warningSizeOffset,
           depth: 3.1,
+          alpha:
+            warningTextureReady && !warningBright
+              ? 0.76
+              : 1,
         },
       );
-      if (urgency > 0.72) {
-        this.graphics.lineStyle(3, 0xff7696, 0.82);
+      if (warningTextureReady) {
+        this.graphics.fillStyle(
+          0xff315f,
+          warningBright ? 0.1 + warningProgress * 0.08 : 0.035,
+        );
+        this.graphics.fillCircle(
+          centerX,
+          centerY,
+          24 + warningProgress * 2,
+        );
+        this.graphics.lineStyle(
+          warningBright ? 3 : 1.5,
+          0xff6f91,
+          warningBright ? 0.92 : 0.34,
+        );
         this.graphics.strokeCircle(
           centerX,
           centerY,
-          18 + pulse * 0.25,
+          20 + warningProgress * 3 + (warningBright ? 2 : 0),
         );
       }
       return;
@@ -889,8 +930,8 @@ export class BattleRenderer {
     this.graphics.fillStyle(0x03101e, 0.48);
     this.graphics.fillEllipse(centerX, y + 41, 31, 10);
     this.graphics.fillStyle(
-      urgency > 0.72 ? 0xff6b8c : 0x2bbce0,
-      1,
+      warningActive ? 0xff315f : 0x2bbce0,
+      warningActive && !warningBright ? 0.76 : 1,
     );
     this.graphics.fillCircle(centerX, centerY, 16 + pulse);
     this.graphics.fillStyle(0x07496f, 0.76);

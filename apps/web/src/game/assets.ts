@@ -3,6 +3,7 @@ import Phaser from "phaser";
 export const CHARACTER_SHEET = "generated-characters";
 export const OBJECT_SHEET = "generated-objects";
 export const BLAST_SHEET = "generated-blast-animation";
+export const WARNING_BALLOON = "generated-warning-balloon";
 export const BRAND_LOGO = "bubble-battle-logo";
 
 export const CHARACTER_FRAME = {
@@ -58,6 +59,13 @@ export function preloadGeneratedAssets(scene: Phaser.Scene): void {
     scene.load.spritesheet(
       BLAST_SHEET,
       "/assets/generated/blast-animation-sheet.png",
+      { frameWidth: 256, frameHeight: 256 },
+    );
+  }
+  if (!scene.textures.exists(WARNING_BALLOON)) {
+    scene.load.spritesheet(
+      WARNING_BALLOON,
+      "/assets/generated/warning-balloon.png",
       { frameWidth: 256, frameHeight: 256 },
     );
   }
