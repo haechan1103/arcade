@@ -1,4 +1,8 @@
-import type { Direction } from "@bubble-battle/game-core";
+import {
+  ANALOG_INPUT_SCALE,
+  type AnalogMove,
+  type Direction,
+} from "@bubble-battle/game-core";
 
 export interface JoystickVector {
   x: number;
@@ -61,6 +65,21 @@ export function resolveJoystickDirection(
     previousMagnitude * JOYSTICK_DIRECTION_SWITCH_BIAS
     ? candidate
     : previous;
+}
+
+export function resolveJoystickAnalogMove(
+  vector: JoystickVector,
+  direction: Direction | null,
+): AnalogMove | null {
+  if (direction === null) {
+    return null;
+  }
+
+  const angle = Math.atan2(vector.y, vector.x);
+  return {
+    x: Math.round(Math.cos(angle) * ANALOG_INPUT_SCALE),
+    y: Math.round(Math.sin(angle) * ANALOG_INPUT_SCALE),
+  };
 }
 
 export function resolveJoystickFallbackDirection(

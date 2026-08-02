@@ -1,6 +1,7 @@
 import type { Difficulty } from "@bubble-battle/game-core";
 import Phaser from "phaser";
 import { soundFx } from "../audio/SoundFx";
+import { preloadGeneratedAssets } from "../assets";
 import {
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -56,6 +57,10 @@ export class MenuScene extends Phaser.Scene {
 
   constructor() {
     super("MenuScene");
+  }
+
+  preload(): void {
+    preloadGeneratedAssets(this);
   }
 
   create(): void {
@@ -185,7 +190,7 @@ export class MenuScene extends Phaser.Scene {
         .text(
           GAME_WIDTH / 2,
           IS_COMPACT_LAYOUT ? 560 : 614,
-          "15 × 13 NEON GARDEN  ·  LOCAL 1 VS 1  ·  NO SERVER",
+          "3 RANDOM ARENAS  ·  LOCAL 1 VS 1  ·  NO SERVER",
           {
             fontFamily: UI_FONT,
             fontSize: "11px",

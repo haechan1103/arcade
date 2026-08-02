@@ -14,9 +14,12 @@ interface DebugPlayer {
 
 interface DebugState {
   seed: number;
+  mapId: string;
+  mapName: string;
   tick: number;
   phase: string;
   width: number;
+  height: number;
   tiles: Array<{ kind: string }>;
   players: DebugPlayer[];
   balloons: Array<{
@@ -202,6 +205,39 @@ test("menu starts a playable local match", async ({ page }) => {
   expect(runtimeErrors).toEqual([]);
 });
 
+test("renders all three authored arenas", async ({ page }) => {
+  const mapIds = [
+    "neon-garden",
+    "metro-crossing",
+    "coral-maze",
+  ];
+  const hardWallLayouts = new Set<string>();
+
+  await page.goto("/");
+  for (const mapId of mapIds) {
+    await page.evaluate((selectedMapId) => {
+      window.__BUBBLE_BATTLE__.game.scene.start("BattleScene", {
+        difficulty: "normal",
+        mapId: selectedMapId,
+      });
+    }, mapId);
+    await expect.poll(async () => (await state(page)).mapId).toBe(mapId);
+
+    const current = await state(page);
+    hardWallLayouts.add(
+      current.tiles
+        .map((tile) => (tile.kind === "hard" ? "#" : "."))
+        .join(""),
+    );
+    await page.screenshot({
+      path: `test-results/map-${mapId}.png`,
+      fullPage: true,
+    });
+  }
+
+  expect(hardWallLayouts.size).toBe(3);
+});
+
 test("escape pauses and resumes the fixed-tick simulation", async ({
   page,
 }) => {
@@ -211,12 +247,16 @@ test("escape pauses and resumes the fixed-tick simulation", async ({
     .poll(async () => (await state(page)).tick, { timeout: 6_000 })
     .toBeGreaterThan(2);
 
-  await page.keyboard.press("Escape");
+  await page.keyboard.down("Escape");
+  await page.waitForTimeout(50);
+  await page.keyboard.up("Escape");
   const pausedTick = (await state(page)).tick;
   await page.waitForTimeout(350);
   expect((await state(page)).tick).toBe(pausedTick);
 
-  await page.keyboard.press("Escape");
+  await page.keyboard.down("Escape");
+  await page.waitForTimeout(50);
+  await page.keyboard.up("Escape");
   await expect
     .poll(async () => (await state(page)).tick)
     .toBeGreaterThan(pausedTick);
@@ -421,7 +461,15 @@ test.describe("mobile touch controls", () => {
       "data-fallback-direction",
       "down",
     );
-    await page.waitForTimeout(180);
+    await expect
+      .poll(
+        async () =>
+          (await state(page)).players.find(
+            (player) => player.id === 1,
+          )?.y ?? 0,
+        { timeout: 1_000, intervals: [25] },
+      )
+      .toBeGreaterThan(wallSlideStart?.y ?? 0);
     await joystick.dispatchEvent("pointerup", {
       pointerId: 12,
       pointerType: "touch",

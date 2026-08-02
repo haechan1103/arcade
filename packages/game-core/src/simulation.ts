@@ -1,4 +1,5 @@
 import {
+  ANALOG_INPUT_SCALE,
   BALLOON_FUSE_TICKS,
   BLAST_DURATION_TICKS,
   CORNER_ASSIST_UNITS,
@@ -32,6 +33,7 @@ import {
   toIndex,
 } from "./geometry";
 import type {
+  AnalogMove,
   BalloonState,
   BlastState,
   Cell,
@@ -154,19 +156,20 @@ function nearestTileCenter(value: number): number {
   );
 }
 
+function playerSpeed(player: PlayerState): number {
+  return player.status === "trapped"
+    ? TRAPPED_SPEED_UNITS_PER_TICK
+    : (SPEED_UNITS_PER_TICK[player.speedLevel] ??
+        SPEED_UNITS_PER_TICK[0]);
+}
+
 function movePlayerInDirection(
   state: GameState,
   player: PlayerState,
   direction: Direction,
-): boolean {
-  const startX = player.x;
-  const startY = player.y;
+): void {
   player.direction = direction;
-  const baseSpeed =
-    player.status === "trapped"
-      ? TRAPPED_SPEED_UNITS_PER_TICK
-      : (SPEED_UNITS_PER_TICK[player.speedLevel] ??
-        SPEED_UNITS_PER_TICK[0]);
+  const baseSpeed = playerSpeed(player);
   const vector = DIRECTION_VECTOR[direction];
 
   if (vector.col !== 0) {
@@ -181,7 +184,7 @@ function movePlayerInDirection(
       );
     }
     moveAlongAxis(state, player, "x", vector.col * baseSpeed);
-    return player.x !== startX;
+    return;
   } else {
     const centerX = nearestTileCenter(player.x);
     const offsetX = centerX - player.x;
@@ -194,7 +197,70 @@ function movePlayerInDirection(
       );
     }
     moveAlongAxis(state, player, "y", vector.row * baseSpeed);
-    return player.y !== startY;
+  }
+}
+
+function normalizeAnalogMove(move: AnalogMove): AnalogMove | null {
+  if (!Number.isFinite(move.x) || !Number.isFinite(move.y)) {
+    return null;
+  }
+
+  const x = Math.max(
+    -ANALOG_INPUT_SCALE,
+    Math.min(ANALOG_INPUT_SCALE, Math.round(move.x)),
+  );
+  const y = Math.max(
+    -ANALOG_INPUT_SCALE,
+    Math.min(ANALOG_INPUT_SCALE, Math.round(move.y)),
+  );
+  const magnitude = Math.hypot(x, y);
+  if (magnitude === 0) {
+    return null;
+  }
+  if (magnitude <= ANALOG_INPUT_SCALE) {
+    return { x, y };
+  }
+
+  const scale = ANALOG_INPUT_SCALE / magnitude;
+  return {
+    x: Math.round(x * scale),
+    y: Math.round(y * scale),
+  };
+}
+
+function directionFromAnalogMove(move: AnalogMove): Direction {
+  if (Math.abs(move.x) >= Math.abs(move.y)) {
+    return move.x >= 0 ? "right" : "left";
+  }
+  return move.y >= 0 ? "down" : "up";
+}
+
+function movePlayerAnalog(
+  state: GameState,
+  player: PlayerState,
+  analogMove: AnalogMove,
+  facingDirection: Direction | null,
+): void {
+  const vector = normalizeAnalogMove(analogMove);
+  if (vector === null) {
+    return;
+  }
+
+  player.direction = facingDirection ?? directionFromAnalogMove(vector);
+  const baseSpeed = playerSpeed(player);
+  const deltaX = Math.round(
+    (vector.x * baseSpeed) / ANALOG_INPUT_SCALE,
+  );
+  const deltaY = Math.round(
+    (vector.y * baseSpeed) / ANALOG_INPUT_SCALE,
+  );
+
+  if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+    moveAlongAxis(state, player, "x", deltaX);
+    moveAlongAxis(state, player, "y", deltaY);
+  } else {
+    moveAlongAxis(state, player, "y", deltaY);
+    moveAlongAxis(state, player, "x", deltaX);
   }
 }
 
@@ -202,34 +268,20 @@ function movePlayer(
   state: GameState,
   player: PlayerState,
   direction: Direction | null,
-  fallbackDirection: Direction | null,
+  analogMove: AnalogMove | null,
 ): void {
-  if (direction === null || player.status === "dead") {
+  if (player.status === "dead") {
     return;
   }
 
-  const startX = player.x;
-  const startY = player.y;
-  const movedInPrimaryDirection = movePlayerInDirection(
-    state,
-    player,
-    direction,
-  );
-  const primaryIsHorizontal =
-    direction === "left" || direction === "right";
-  const fallbackIsHorizontal =
-    fallbackDirection === "left" || fallbackDirection === "right";
-  if (
-    movedInPrimaryDirection ||
-    fallbackDirection === null ||
-    primaryIsHorizontal === fallbackIsHorizontal
-  ) {
+  if (analogMove !== null) {
+    movePlayerAnalog(state, player, analogMove, direction);
     return;
   }
 
-  player.x = startX;
-  player.y = startY;
-  movePlayerInDirection(state, player, fallbackDirection);
+  if (direction !== null) {
+    movePlayerInDirection(state, player, direction);
+  }
 }
 
 function placeBalloon(
@@ -861,7 +913,7 @@ export function stepGame(
       state,
       player,
       input?.move ?? null,
-      input?.fallbackMove ?? null,
+      input?.analogMove ?? null,
     );
   }
 

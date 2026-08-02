@@ -13,6 +13,12 @@ import {
 } from "@bubble-battle/game-core";
 import Phaser from "phaser";
 import {
+  CHARACTER_FRAME,
+  CHARACTER_SHEET,
+  OBJECT_FRAME,
+  OBJECT_SHEET,
+} from "../assets";
+import {
   BOARD_HEIGHT,
   BOARD_WIDTH,
   BOARD_X,
@@ -45,11 +51,33 @@ interface Particle {
   color: number;
 }
 
+interface SpriteOptions {
+  width: number;
+  height: number;
+  depth: number;
+  alpha?: number;
+  angle?: number;
+  flipX?: boolean;
+}
+
 export type OverlayKind = "none" | "countdown" | "pause";
 
 const PLAYER_COLORS: Record<number, { main: number; dark: number }> = {
   1: { main: 0x35d7f0, dark: 0x077d9b },
   2: { main: 0xff668f, dark: 0xa41e57 },
+};
+
+const HARD_BLOCK_FRAME_BY_MAP: Readonly<Record<string, number>> = {
+  "neon-garden": OBJECT_FRAME.gardenWall,
+  "metro-crossing": OBJECT_FRAME.metroWall,
+  "coral-maze": OBJECT_FRAME.coralWall,
+};
+
+const PICKUP_FRAME: Readonly<Record<ItemType, number>> = {
+  capacity: OBJECT_FRAME.capacity,
+  range: OBJECT_FRAME.range,
+  speed: OBJECT_FRAME.speed,
+  needle: OBJECT_FRAME.needle,
 };
 
 const BOT_MODE_LABELS: Record<AiDebugInfo["mode"], string> = {
@@ -83,6 +111,11 @@ export class BattleRenderer {
   private readonly overlayPrimary: Phaser.GameObjects.Text;
   private readonly overlaySecondary: Phaser.GameObjects.Text;
   private readonly particles: Particle[] = [];
+  private readonly spritePools = new Map<
+    string,
+    Phaser.GameObjects.Image[]
+  >();
+  private readonly spriteUseCount = new Map<string, number>();
   private overlayKind: OverlayKind = "none";
   private overlayTitle = "";
   private overlaySubtitle = "";
@@ -327,6 +360,7 @@ export class BattleRenderer {
     elapsedMs: number,
     botDebug: AiDebugInfo,
   ): void {
+    this.beginSpriteFrame();
     this.graphics.clear();
     this.drawBackdrop(elapsedMs);
     this.drawBoard(state, elapsedMs);
@@ -346,6 +380,13 @@ export class BattleRenderer {
   }
 
   destroy(): void {
+    for (const pool of this.spritePools.values()) {
+      for (const sprite of pool) {
+        sprite.destroy();
+      }
+    }
+    this.spritePools.clear();
+    this.spriteUseCount.clear();
     this.graphics.destroy();
     this.effectGraphics.destroy();
     this.overlayGraphics.destroy();
@@ -367,6 +408,54 @@ export class BattleRenderer {
         color,
       })
       .setDepth(6);
+  }
+
+  private beginSpriteFrame(): void {
+    this.spriteUseCount.clear();
+    for (const pool of this.spritePools.values()) {
+      for (const sprite of pool) {
+        sprite.setVisible(false);
+      }
+    }
+  }
+
+  private drawSprite(
+    texture: string,
+    frame: number,
+    x: number,
+    y: number,
+    options: SpriteOptions,
+  ): Phaser.GameObjects.Image | null {
+    if (!this.scene.textures.exists(texture)) {
+      return null;
+    }
+
+    const used = this.spriteUseCount.get(texture) ?? 0;
+    let pool = this.spritePools.get(texture);
+    if (pool === undefined) {
+      pool = [];
+      this.spritePools.set(texture, pool);
+    }
+
+    let sprite = pool[used];
+    if (sprite === undefined) {
+      sprite = this.scene.add.image(x, y, texture, frame);
+      pool.push(sprite);
+    }
+    this.spriteUseCount.set(texture, used + 1);
+
+    sprite
+      .setTexture(texture, frame)
+      .setPosition(x, y)
+      .setDisplaySize(options.width, options.height)
+      .setDepth(options.depth)
+      .setAlpha(options.alpha ?? 1)
+      .setAngle(options.angle ?? 0)
+      .setFlipX(options.flipX ?? false)
+      .setFlipY(false)
+      .clearTint()
+      .setVisible(true);
+    return sprite;
   }
 
   private drawBackdrop(elapsedMs: number): void {
@@ -448,7 +537,7 @@ export class BattleRenderer {
       for (let col = 0; col < state.width; col += 1) {
         const tile = state.tiles[row * state.width + col];
         if (tile?.kind === "hard") {
-          this.drawHardBlock(col, row);
+          this.drawHardBlock(state.mapId, col, row);
         } else if (tile?.kind === "soft") {
           this.drawSoftBlock(col, row);
         }
@@ -460,6 +549,22 @@ export class BattleRenderer {
     const wave = Math.sin(elapsedMs * 0.008) * 3;
     for (const cell of state.stormCells) {
       const screen = cellToScreen(cell.col, cell.row);
+      if (
+        this.drawSprite(
+          OBJECT_SHEET,
+          OBJECT_FRAME.storm,
+          screen.x + TILE_SIZE / 2,
+          screen.y + TILE_SIZE / 2,
+          {
+            width: TILE_SIZE + 4,
+            height: TILE_SIZE + 4,
+            depth: 1.5,
+            alpha: 0.84,
+          },
+        ) !== null
+      ) {
+        continue;
+      }
       this.graphics.fillStyle(0x79194f, 0.78);
       this.graphics.fillRoundedRect(
         screen.x + 2,
@@ -484,8 +589,27 @@ export class BattleRenderer {
     }
   }
 
-  private drawHardBlock(col: number, row: number): void {
+  private drawHardBlock(
+    mapId: string,
+    col: number,
+    row: number,
+  ): void {
     const { x, y } = cellToScreen(col, row);
+    if (
+      this.drawSprite(
+        OBJECT_SHEET,
+        HARD_BLOCK_FRAME_BY_MAP[mapId] ?? OBJECT_FRAME.hardBlock,
+        x + TILE_SIZE / 2,
+        y + TILE_SIZE / 2,
+        {
+          width: TILE_SIZE + 8,
+          height: TILE_SIZE + 8,
+          depth: 2,
+        },
+      ) !== null
+    ) {
+      return;
+    }
     this.graphics.fillStyle(0x071527, 0.42);
     this.graphics.fillRoundedRect(x + 5, y + 7, 40, 39, 9);
     this.graphics.fillStyle(0x45678f, 1);
@@ -501,6 +625,21 @@ export class BattleRenderer {
 
   private drawSoftBlock(col: number, row: number): void {
     const { x, y } = cellToScreen(col, row);
+    if (
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.softBlock,
+        x + TILE_SIZE / 2,
+        y + TILE_SIZE / 2,
+        {
+          width: TILE_SIZE + 8,
+          height: TILE_SIZE + 8,
+          depth: 2.1,
+        },
+      ) !== null
+    ) {
+      return;
+    }
     this.graphics.fillStyle(0x071527, 0.38);
     this.graphics.fillRoundedRect(x + 5, y + 7, 40, 38, 8);
     this.graphics.fillStyle(0xb66943, 1);
@@ -559,6 +698,46 @@ export class BattleRenderer {
     const centerX = x + TILE_SIZE / 2;
     const centerY =
       y + TILE_SIZE / 2 + Math.sin(elapsedMs * 0.006 + pickup.col) * 2;
+
+    if (this.scene.textures.exists(OBJECT_SHEET)) {
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.shadow,
+        centerX,
+        y + 39,
+        {
+          width: 36,
+          height: 17,
+          depth: 2.7,
+          alpha: 0.56,
+        },
+      );
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.sparkle,
+        centerX,
+        centerY,
+        {
+          width: 48,
+          height: 48,
+          depth: 2.8,
+          alpha: 0.32,
+          angle: (elapsedMs * 0.025) % 360,
+        },
+      );
+      this.drawSprite(
+        OBJECT_SHEET,
+        PICKUP_FRAME[pickup.type],
+        centerX,
+        centerY,
+        {
+          width: 47,
+          height: 47,
+          depth: 3,
+        },
+      );
+      return;
+    }
 
     this.graphics.fillStyle(0x061423, 0.42);
     this.graphics.fillEllipse(centerX, y + 39, 27, 9);
@@ -644,6 +823,41 @@ export class BattleRenderer {
       Math.sin(elapsedMs * (0.009 + urgency * 0.012)) *
       (1.2 + urgency * 2.5);
 
+    if (this.scene.textures.exists(OBJECT_SHEET)) {
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.shadow,
+        centerX,
+        y + 41,
+        {
+          width: 38,
+          height: 18,
+          depth: 2.7,
+          alpha: 0.62,
+        },
+      );
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.balloon,
+        centerX,
+        centerY,
+        {
+          width: 49 + pulse * 0.35,
+          height: 49 + pulse * 0.35,
+          depth: 3.1,
+        },
+      );
+      if (urgency > 0.72) {
+        this.graphics.lineStyle(3, 0xff7696, 0.82);
+        this.graphics.strokeCircle(
+          centerX,
+          centerY,
+          18 + pulse * 0.25,
+        );
+      }
+      return;
+    }
+
     this.graphics.fillStyle(0x03101e, 0.48);
     this.graphics.fillEllipse(centerX, y + 41, 31, 10);
     this.graphics.fillStyle(
@@ -666,6 +880,23 @@ export class BattleRenderer {
   private drawBlast(cell: Cell, elapsedMs: number): void {
     const { x, y } = cellToScreen(cell.col, cell.row);
     const pulse = Math.sin(elapsedMs * 0.03 + cell.col + cell.row) * 2;
+    if (
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.blast,
+        x + TILE_SIZE / 2,
+        y + TILE_SIZE / 2,
+        {
+          width: TILE_SIZE + 8 + pulse,
+          height: TILE_SIZE + 8 + pulse,
+          depth: 4,
+          alpha: 0.9,
+          angle: (cell.col + cell.row) % 2 === 0 ? 0 : 45,
+        },
+      ) !== null
+    ) {
+      return;
+    }
     this.graphics.fillStyle(0x33dff5, 0.66);
     this.graphics.fillRoundedRect(
       x + 2 - pulse * 0.2,
@@ -699,8 +930,22 @@ export class BattleRenderer {
 
     const x = worldToScreenX(worldX);
     const y = worldToScreenY(worldY);
-    const palette = PLAYER_COLORS[player.team] ?? PLAYER_COLORS[1];
     const bob = Math.sin(elapsedMs * 0.008 + player.id) * 1.4;
+
+    if (
+      this.drawGeneratedPlayer(
+        player,
+        x,
+        y,
+        bob,
+        elapsedMs,
+        currentTick,
+      )
+    ) {
+      return;
+    }
+
+    const palette = PLAYER_COLORS[player.team] ?? PLAYER_COLORS[1];
     const directionOffset = {
       left: { x: -2, y: 0 },
       right: { x: 2, y: 0 },
@@ -791,6 +1036,103 @@ export class BattleRenderer {
     }
   }
 
+  private drawGeneratedPlayer(
+    player: PlayerState,
+    x: number,
+    y: number,
+    bob: number,
+    elapsedMs: number,
+    currentTick: number,
+  ): boolean {
+    if (!this.scene.textures.exists(CHARACTER_SHEET)) {
+      return false;
+    }
+
+    if (this.scene.textures.exists(OBJECT_SHEET)) {
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.shadow,
+        x,
+        y + 19,
+        {
+          width: 43,
+          height: 19,
+          depth: 4.4,
+          alpha: 0.68,
+        },
+      );
+    }
+
+    const horizontal =
+      player.direction === "left" || player.direction === "right";
+    const frame =
+      player.team === 1
+        ? horizontal
+          ? CHARACTER_FRAME.humanWalk
+          : CHARACTER_FRAME.humanIdle
+        : horizontal
+          ? CHARACTER_FRAME.botWalk
+          : CHARACTER_FRAME.botIdle;
+    const character = this.drawSprite(
+      CHARACTER_SHEET,
+      frame,
+      x,
+      y - 5 + bob,
+      {
+        width: 82,
+        height: 82,
+        depth: 5,
+        flipX: player.direction === "left",
+        alpha:
+          player.invulnerableUntilTick > currentTick
+            ? 0.72 + Math.sin(elapsedMs * 0.02) * 0.18
+            : 1,
+      },
+    );
+
+    if (
+      character !== null &&
+      player.status === "trapped" &&
+      this.scene.textures.exists(OBJECT_SHEET)
+    ) {
+      const bubblePulse = Math.sin(elapsedMs * 0.01) * 2;
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.trappedBubble,
+        x,
+        y - 3,
+        {
+          width: 72 + bubblePulse,
+          height: 72 + bubblePulse,
+          depth: 5.4,
+          alpha: 0.9,
+        },
+      );
+    }
+
+    if (
+      character !== null &&
+      player.invulnerableUntilTick > currentTick &&
+      this.scene.textures.exists(OBJECT_SHEET)
+    ) {
+      this.drawSprite(
+        OBJECT_SHEET,
+        OBJECT_FRAME.sparkle,
+        x,
+        y - 2,
+        {
+          width: 76,
+          height: 76,
+          depth: 5.5,
+          alpha: 0.52,
+          angle: (elapsedMs * 0.04) % 360,
+        },
+      );
+    }
+
+    return character !== null;
+  }
+
   private drawSidebar(
     state: GameState,
     botDebug: AiDebugInfo,
@@ -840,7 +1182,7 @@ export class BattleRenderer {
     this.phaseText.setColor(
       state.tick >= STORM_START_TICK ? "#ff739e" : "#7088b7",
     );
-    this.mapText.setText(`ARENA 01  ·  ${state.mapName}`);
+    this.mapText.setText(`RANDOM ARENA  ·  ${state.mapName}`);
 
     const human = state.players.find((player) => player.id === 1);
     const bot = state.players.find((player) => player.id === 2);

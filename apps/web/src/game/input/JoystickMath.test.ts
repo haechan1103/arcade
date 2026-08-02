@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { ANALOG_INPUT_SCALE } from "@bubble-battle/game-core";
 import {
   JOYSTICK_ACTIVATION_THRESHOLD,
   JOYSTICK_RELEASE_THRESHOLD,
+  resolveJoystickAnalogMove,
   resolveJoystickDirection,
   resolveJoystickFallbackDirection,
 } from "./JoystickMath";
@@ -50,6 +52,39 @@ describe("resolveJoystickDirection", () => {
     expect(
       resolveJoystickDirection({ x: -0.8, y: 0.05 }, "right"),
     ).toBe("left");
+  });
+});
+
+describe("resolveJoystickAnalogMove", () => {
+  it("converts the joystick angle into cosine and sine components", () => {
+    expect(
+      resolveJoystickAnalogMove({ x: 1, y: 0 }, "right"),
+    ).toEqual({ x: ANALOG_INPUT_SCALE, y: 0 });
+    expect(
+      resolveJoystickAnalogMove(
+        { x: Math.cos(Math.PI / 6), y: Math.sin(Math.PI / 6) },
+        "right",
+      ),
+    ).toEqual({ x: 887, y: 512 });
+  });
+
+  it("keeps total speed constant at a 45 degree angle", () => {
+    const move = resolveJoystickAnalogMove(
+      { x: 0.8, y: -0.8 },
+      "right",
+    );
+
+    expect(move).toEqual({ x: 724, y: -724 });
+    expect(Math.hypot(move?.x ?? 0, move?.y ?? 0)).toBeCloseTo(
+      ANALOG_INPUT_SCALE,
+      0,
+    );
+  });
+
+  it("does not create analog movement inside the dead zone", () => {
+    expect(
+      resolveJoystickAnalogMove({ x: 0.05, y: 0 }, null),
+    ).toBeNull();
   });
 });
 

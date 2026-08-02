@@ -1,8 +1,10 @@
 import type {
+  AnalogMove,
   Direction,
   PlayerInput,
 } from "@bubble-battle/game-core";
 import {
+  resolveJoystickAnalogMove,
   resolveJoystickDirection,
   resolveJoystickFallbackDirection,
 } from "./JoystickMath";
@@ -32,6 +34,7 @@ export class TouchController {
   private joystickGesture: JoystickGesture | null = null;
   private joystickDirection: Direction | null = null;
   private joystickFallbackDirection: Direction | null = null;
+  private joystickAnalogMove: AnalogMove | null = null;
   private balloonQueued = false;
   private needleQueued = false;
   private pauseQueued = false;
@@ -118,7 +121,7 @@ export class TouchController {
   readInput(): PlayerInput {
     const input: PlayerInput = {
       move: this.joystickDirection,
-      fallbackMove: this.joystickFallbackDirection,
+      analogMove: this.joystickAnalogMove,
       placeBalloon: this.balloonQueued,
       useNeedle: this.needleQueued,
     };
@@ -252,6 +255,10 @@ export class TouchController {
       vector,
       this.joystickDirection,
     );
+    this.joystickAnalogMove = resolveJoystickAnalogMove(
+      vector,
+      this.joystickDirection,
+    );
     this.joystickFallbackDirection =
       resolveJoystickFallbackDirection(
         vector,
@@ -269,7 +276,7 @@ export class TouchController {
             `이동 조이스틱: ${DIRECTION_LABEL[this.joystickDirection]}`,
             this.joystickFallbackDirection === null
               ? ""
-              : `막히면 ${DIRECTION_LABEL[this.joystickFallbackDirection]}`,
+              : `${DIRECTION_LABEL[this.joystickFallbackDirection]} 성분 포함`,
           ]
             .filter((label) => label.length > 0)
             .join(", "),
@@ -281,6 +288,7 @@ export class TouchController {
     this.joystickGesture = null;
     this.joystickDirection = null;
     this.joystickFallbackDirection = null;
+    this.joystickAnalogMove = null;
     this.joystick?.classList.remove("is-active");
     if (this.joystick !== null) {
       this.joystick.dataset.direction = "idle";

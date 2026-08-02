@@ -21,60 +21,109 @@ function cellKey(col: number, row: number): string {
   return `${col},${row}`;
 }
 
-function isClassicPillar(col: number, row: number): boolean {
-  return col > 0 && row > 0 && col % 2 === 0 && row % 2 === 0;
+function builtInMap(
+  id: string,
+  name: string,
+  layout: string[],
+  softBlockChance: number,
+): MapDefinition {
+  return {
+    id,
+    name,
+    width: DEFAULT_WIDTH,
+    height: DEFAULT_HEIGHT,
+    layout,
+    softBlockChance,
+    mirrorRandomBlocks: true,
+  };
 }
 
-function createClassicLayout(): string[] {
-  const rows: string[] = [];
-  const safeCells = new Set([
-    cellKey(1, 1),
-    cellKey(2, 1),
-    cellKey(1, 2),
-    cellKey(DEFAULT_WIDTH - 2, DEFAULT_HEIGHT - 2),
-    cellKey(DEFAULT_WIDTH - 3, DEFAULT_HEIGHT - 2),
-    cellKey(DEFAULT_WIDTH - 2, DEFAULT_HEIGHT - 3),
-  ]);
+export const GAME_MAPS: readonly MapDefinition[] = [
+  builtInMap(
+    "neon-garden",
+    "네온 가든",
+    [
+      "###############",
+      "#1..???#???...#",
+      "#.##.#...#.##?#",
+      "#??..#???#..??#",
+      "#.#.###.###.#.#",
+      "#??#.......#??#",
+      "##..##...##..##",
+      "#??#.......#??#",
+      "#.#.###.###.#.#",
+      "#??..#???#..??#",
+      "#?##.#...#.##.#",
+      "#...???#???..2#",
+      "###############",
+    ],
+    0.66,
+  ),
+  builtInMap(
+    "metro-crossing",
+    "메트로 크로싱",
+    [
+      "###############",
+      "#1...??#??....#",
+      "#..###...###..#",
+      "#??..#...#..??#",
+      "#.#.##...##.#.#",
+      "#?...#...#...?#",
+      "####...#...####",
+      "#?...#...#...?#",
+      "#.#.##...##.#.#",
+      "#??..#...#..??#",
+      "#..###...###..#",
+      "#....??#??...2#",
+      "###############",
+    ],
+    0.72,
+  ),
+  builtInMap(
+    "coral-maze",
+    "코럴 메이즈",
+    [
+      "###############",
+      "#1...#???#....#",
+      "#.##.#...#.##.#",
+      "#?..#??#??#..?#",
+      "#.#...###...#.#",
+      "#??##.....##??#",
+      "##...##.##...##",
+      "#??##.....##??#",
+      "#.#...###...#.#",
+      "#?..#??#??#..?#",
+      "#.##.#...#.##.#",
+      "#....#???#...2#",
+      "###############",
+    ],
+    0.6,
+  ),
+];
 
-  for (let row = 0; row < DEFAULT_HEIGHT; row += 1) {
-    let line = "";
-    for (let col = 0; col < DEFAULT_WIDTH; col += 1) {
-      const border =
-        col === 0 ||
-        row === 0 ||
-        col === DEFAULT_WIDTH - 1 ||
-        row === DEFAULT_HEIGHT - 1;
+export const DEFAULT_MAP = GAME_MAPS[0]!;
 
-      if (border || isClassicPillar(col, row)) {
-        line += "#";
-      } else if (col === 1 && row === 1) {
-        line += "1";
-      } else if (
-        col === DEFAULT_WIDTH - 2 &&
-        row === DEFAULT_HEIGHT - 2
-      ) {
-        line += "2";
-      } else if (safeCells.has(cellKey(col, row))) {
-        line += ".";
-      } else {
-        line += "?";
-      }
-    }
-    rows.push(line);
+export function getGameMap(mapId: string): MapDefinition | undefined {
+  return GAME_MAPS.find((map) => map.id === mapId);
+}
+
+export function selectGameMap(seed: number): MapDefinition {
+  return GAME_MAPS[normalizeSeed(seed) % GAME_MAPS.length]!;
+}
+
+function resolveGameMap(options: NewGameOptions): MapDefinition {
+  if (options.map !== undefined) {
+    return options.map;
   }
-
-  return rows;
+  if (options.mapId !== undefined) {
+    const selected = getGameMap(options.mapId);
+    if (selected === undefined) {
+      throw new Error(`Unknown map id: ${options.mapId}`);
+    }
+    return selected;
+  }
+  return selectGameMap(options.seed);
 }
-
-export const DEFAULT_MAP: MapDefinition = {
-  id: "neon-garden",
-  name: "네온 가든",
-  width: DEFAULT_WIDTH,
-  height: DEFAULT_HEIGHT,
-  layout: createClassicLayout(),
-  softBlockChance: 0.72,
-  mirrorRandomBlocks: true,
-};
 
 function validateMap(map: MapDefinition): void {
   if (map.layout.length !== map.height) {
@@ -138,7 +187,7 @@ function toPlayer(
 }
 
 export function createGameState(options: NewGameOptions): GameState {
-  const map = options.map ?? DEFAULT_MAP;
+  const map = resolveGameMap(options);
   validateMap(map);
 
   const spawnCells: [Cell | null, Cell | null] = [null, null];

@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  ANALOG_INPUT_SCALE,
   BALLOON_FUSE_TICKS,
   BLAST_HITBOX_HALF,
+  GAME_MAPS,
   HALF_TILE,
   PLAYER_BODY_HALF,
+  SPEED_UNITS_PER_TICK,
   STORM_START_TICK,
   TILE_UNITS,
   createGameState,
+  getGameMap,
   mapFromAscii,
   noInput,
   stateHash,
   stepGame,
+  selectGameMap,
   toIndex,
   type BalloonState,
   type GameState,
@@ -45,6 +50,48 @@ function advance(state: GameState, ticks: number): void {
     stepGame(state, emptyInputs());
   }
 }
+
+describe("built-in maps", () => {
+  it("provides three distinct authored arenas", () => {
+    expect(GAME_MAPS).toHaveLength(3);
+    expect(new Set(GAME_MAPS.map((map) => map.id)).size).toBe(3);
+    expect(
+      new Set(GAME_MAPS.map((map) => map.layout.join("\n"))).size,
+    ).toBe(3);
+
+    for (const map of GAME_MAPS) {
+      expect(map.width).toBe(15);
+      expect(map.height).toBe(13);
+      expect(map.layout).toHaveLength(map.height);
+      expect(map.layout.every((row) => row.length === map.width)).toBe(
+        true,
+      );
+      expect(map.layout.join("").match(/1/g)).toHaveLength(1);
+      expect(map.layout.join("").match(/2/g)).toHaveLength(1);
+    }
+  });
+
+  it("selects by seed and also accepts an explicit map id", () => {
+    const selectedIds = [1, 2, 3].map(
+      (seed) => selectGameMap(seed).id,
+    );
+    expect(new Set(selectedIds)).toEqual(
+      new Set(GAME_MAPS.map((map) => map.id)),
+    );
+    expect(createGameState({ seed: 1 }).mapId).toBe(
+      selectGameMap(1).id,
+    );
+
+    const requested = getGameMap("coral-maze");
+    expect(requested?.name).toBe("코럴 메이즈");
+    expect(
+      createGameState({ seed: 1, mapId: "coral-maze" }).mapId,
+    ).toBe("coral-maze");
+    expect(() =>
+      createGameState({ seed: 1, mapId: "missing-map" }),
+    ).toThrow("Unknown map id: missing-map");
+  });
+});
 
 describe("deterministic simulation", () => {
   it("applies and clamps a configured starting speed", () => {
@@ -86,24 +133,26 @@ describe("deterministic simulation", () => {
     expect(first).toEqual(second);
   });
 
-  it("creates symmetric random soft-block positions", () => {
-    const state = createGameState({ seed: 99 });
+  it("creates symmetric hard walls and random soft blocks", () => {
+    for (const map of GAME_MAPS) {
+      const state = createGameState({ seed: 99, mapId: map.id });
 
-    for (let row = 0; row < state.height; row += 1) {
-      for (let col = 0; col < state.width; col += 1) {
-        const mirrorCol = state.width - 1 - col;
-        const mirrorRow = state.height - 1 - row;
-        const tile = state.tiles[toIndex(state.width, col, row)];
-        const mirror =
-          state.tiles[toIndex(state.width, mirrorCol, mirrorRow)];
-        expect(tile?.kind).toBe(mirror?.kind);
+      for (let row = 0; row < state.height; row += 1) {
+        for (let col = 0; col < state.width; col += 1) {
+          const mirrorCol = state.width - 1 - col;
+          const mirrorRow = state.height - 1 - row;
+          const tile = state.tiles[toIndex(state.width, col, row)];
+          const mirror =
+            state.tiles[toIndex(state.width, mirrorCol, mirrorRow)];
+          expect(tile?.kind).toBe(mirror?.kind);
+        }
       }
     }
   });
 });
 
 describe("movement", () => {
-  it("uses the diagonal fallback axis when the primary path is blocked", () => {
+  it("keeps the free analog axis moving when the other axis is blocked", () => {
     const map = mapFromAscii("wall-slide", "Wall Slide", [
       "#######",
       "#....2#",
@@ -116,32 +165,50 @@ describe("movement", () => {
     human.x = 2 * TILE_UNITS - PLAYER_BODY_HALF;
     const startX = human.x;
     const startY = human.y;
+    const diagonalComponent = Math.round(
+      ANALOG_INPUT_SCALE / Math.SQRT2,
+    );
 
     stepGame(state, {
       1: {
         move: "right",
-        fallbackMove: "up",
+        analogMove: {
+          x: diagonalComponent,
+          y: -diagonalComponent,
+        },
         placeBalloon: false,
         useNeedle: false,
       },
       2: noInput(),
     });
 
-    expect(human.x).toBeLessThanOrEqual(startX);
+    expect(human.x).toBe(startX);
     expect(human.y).toBeLessThan(startY);
-    expect(human.direction).toBe("up");
+    expect(startY - human.y).toBe(
+      Math.round(
+        (diagonalComponent * SPEED_UNITS_PER_TICK[0]) /
+          ANALOG_INPUT_SCALE,
+      ),
+    );
+    expect(human.direction).toBe("right");
   });
 
-  it("does not move both axes when the primary path is open", () => {
+  it("preserves total speed while moving diagonally", () => {
     const state = createOpenGame();
     const human = state.players[0]!;
     const startX = human.x;
     const startY = human.y;
+    const diagonalComponent = Math.round(
+      ANALOG_INPUT_SCALE / Math.SQRT2,
+    );
 
     stepGame(state, {
       1: {
         move: "right",
-        fallbackMove: "down",
+        analogMove: {
+          x: diagonalComponent,
+          y: diagonalComponent,
+        },
         placeBalloon: false,
         useNeedle: false,
       },
@@ -149,7 +216,13 @@ describe("movement", () => {
     });
 
     expect(human.x).toBeGreaterThan(startX);
-    expect(human.y).toBe(startY);
+    expect(human.y).toBeGreaterThan(startY);
+    expect(
+      Math.abs(
+        Math.hypot(human.x - startX, human.y - startY) -
+          SPEED_UNITS_PER_TICK[0],
+      ),
+    ).toBeLessThanOrEqual(1);
     expect(human.direction).toBe("right");
   });
 });

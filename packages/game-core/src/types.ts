@@ -26,9 +26,14 @@ export interface MapDefinition {
   mirrorRandomBlocks: boolean;
 }
 
+export interface AnalogMove {
+  x: number;
+  y: number;
+}
+
 export interface PlayerInput {
   move: Direction | null;
-  fallbackMove?: Direction | null;
+  analogMove?: AnalogMove | null;
   placeBalloon: boolean;
   useNeedle: boolean;
 }
@@ -106,6 +111,7 @@ export interface GameState {
 export interface NewGameOptions {
   seed: number;
   map?: MapDefinition;
+  mapId?: string;
   playerNames?: readonly [string, string];
   initialSpeedLevel?: number;
 }

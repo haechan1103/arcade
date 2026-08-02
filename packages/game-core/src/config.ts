@@ -2,6 +2,7 @@ export const TICK_RATE = 30;
 export const TICK_MS = 1000 / TICK_RATE;
 
 export const TILE_UNITS = 1024;
+export const ANALOG_INPUT_SCALE = 1024;
 export const HALF_TILE = TILE_UNITS / 2;
 export const PLAYER_BODY_HALF = 282;
 export const BLAST_HITBOX_HALF = 196;

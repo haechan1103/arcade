@@ -10,6 +10,7 @@ import {
   type PlayerInput,
 } from "@bubble-battle/game-core";
 import Phaser from "phaser";
+import { preloadGeneratedAssets } from "../assets";
 import { soundFx } from "../audio/SoundFx";
 import { KeyboardController } from "../input/KeyboardController";
 import { TouchController } from "../input/TouchController";
@@ -28,6 +29,7 @@ import { createButton } from "../ui/createButton";
 
 interface BattleSceneData {
   difficulty?: Difficulty;
+  mapId?: string;
 }
 
 interface Position {
@@ -43,6 +45,7 @@ export interface BattleUiDebugState {
 
 export class BattleScene extends Phaser.Scene {
   private difficulty: Difficulty = "normal";
+  private mapId: string | undefined;
   private state!: GameState;
   private bot!: BotController;
   private controls!: KeyboardController;
@@ -60,6 +63,11 @@ export class BattleScene extends Phaser.Scene {
 
   init(data: BattleSceneData): void {
     this.difficulty = data.difficulty ?? "normal";
+    this.mapId = data.mapId;
+  }
+
+  preload(): void {
+    preloadGeneratedAssets(this);
   }
 
   create(): void {
@@ -71,6 +79,7 @@ export class BattleScene extends Phaser.Scene {
     const seed = (Date.now() ^ 0xa53c9e17) >>> 0;
     this.state = createGameState({
       seed,
+      ...(this.mapId === undefined ? {} : { mapId: this.mapId }),
       playerNames: ["플레이어", this.botName()],
       initialSpeedLevel: IS_COMPACT_LAYOUT ? 1 : 0,
     });
@@ -184,10 +193,8 @@ export class BattleScene extends Phaser.Scene {
     const touch = this.touchControls.readInput();
     return {
       move: touch.move ?? keyboard.move,
-      fallbackMove:
-        touch.move === null
-          ? (keyboard.fallbackMove ?? null)
-          : (touch.fallbackMove ?? null),
+      analogMove:
+        touch.move === null ? null : (touch.analogMove ?? null),
       placeBalloon:
         touch.placeBalloon || keyboard.placeBalloon,
       useNeedle: touch.useNeedle || keyboard.useNeedle,
@@ -316,7 +323,10 @@ export class BattleScene extends Phaser.Scene {
       "다시 대결",
       () => {
         soundFx.unlock();
-        this.scene.restart({ difficulty: this.difficulty });
+        this.scene.restart({
+          difficulty: this.difficulty,
+          mapId: this.mapId,
+        });
       },
       {
         width: 195,
@@ -383,14 +393,14 @@ export class BattleScene extends Phaser.Scene {
   private countdownMessage(step: 1 | 2 | 3): string {
     if (IS_COMPACT_LAYOUT) {
       return {
-        3: "길을 먼저 확보하세요",
+        3: `${this.state.mapName} · 길을 먼저 확보하세요`,
         2: "벽 뒤는 안전합니다",
         1: "내 물풍선도 피하세요",
       }[step];
     }
 
     return {
-      3: "빈 공간을 만들고 먼저 성장하세요",
+      3: `${this.state.mapName} · 빈 공간을 만들고 먼저 성장하세요`,
       2: "물줄기는 단단한 벽에서 멈춥니다",
       1: "자신의 물풍선에서도 반드시 탈출하세요",
     }[step];
