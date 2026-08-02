@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { UI_FONT } from "../layout";
+import { UI_FONT, UI_TEXT_RESOLUTION } from "../layout";
 
 export interface ButtonOptions {
   width?: number;
@@ -42,6 +42,7 @@ export function createButton(
       fontStyle: "bold",
       color: textColor,
       align: "center",
+      resolution: UI_TEXT_RESOLUTION,
     })
     .setOrigin(0.5);
 
@@ -59,6 +60,7 @@ export function createButton(
           fontSize: `${options.subtitleFontSize ?? 12}px`,
           color: textColor,
           align: "center",
+          resolution: UI_TEXT_RESOLUTION,
         })
         .setOrigin(0.5)
         .setAlpha(0.72),

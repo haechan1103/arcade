@@ -10,6 +10,7 @@ import {
   GAME_WIDTH,
   IS_COMPACT_LAYOUT,
   UI_FONT,
+  UI_TEXT_RESOLUTION,
   isPortraitLayout,
 } from "../layout";
 import { createDifficultyCard } from "../ui/createDifficultyCard";
@@ -107,6 +108,7 @@ export class MenuScene extends Phaser.Scene {
           fontFamily: UI_FONT,
           fontSize: compact ? "19px" : "18px",
           color: "#b8cce9",
+          resolution: UI_TEXT_RESOLUTION,
         },
       )
       .setOrigin(0.5)
@@ -149,6 +151,7 @@ export class MenuScene extends Phaser.Scene {
         fontSize: compact ? "19px" : "15px",
         fontStyle: "bold",
         color: "#91aed3",
+        resolution: UI_TEXT_RESOLUTION,
       })
       .setOrigin(0.5)
       .setDepth(2);
@@ -172,6 +175,7 @@ export class MenuScene extends Phaser.Scene {
             fontFamily: UI_FONT,
             fontSize: "11px",
             color: "#566f96",
+            resolution: UI_TEXT_RESOLUTION,
           },
         )
         .setOrigin(0.5)
@@ -223,6 +227,7 @@ export class MenuScene extends Phaser.Scene {
           fontFamily: UI_FONT,
           fontSize: portrait ? "18px" : compact ? "15px" : "14px",
           color: "#91a8ca",
+          resolution: UI_TEXT_RESOLUTION,
         },
       )
       .setOrigin(0.5)
@@ -239,6 +244,7 @@ export class MenuScene extends Phaser.Scene {
             fontStyle: "bold",
             color: "#4e668c",
             letterSpacing: 2,
+            resolution: UI_TEXT_RESOLUTION,
           },
         )
         .setOrigin(0.5)
@@ -252,6 +258,7 @@ export class MenuScene extends Phaser.Scene {
             fontFamily: UI_FONT,
             fontSize: "11px",
             color: "#435777",
+            resolution: UI_TEXT_RESOLUTION,
           },
         )
         .setOrigin(0.5)

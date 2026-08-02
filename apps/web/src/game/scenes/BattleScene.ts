@@ -23,6 +23,7 @@ import {
   GAME_WIDTH,
   IS_COMPACT_LAYOUT,
   UI_FONT,
+  UI_TEXT_RESOLUTION,
 } from "../layout";
 import { BattleRenderer } from "../render/BattleRenderer";
 import { createButton } from "../ui/createButton";
@@ -280,6 +281,7 @@ export class BattleScene extends Phaser.Scene {
           fontSize: "37px",
           fontStyle: "bold",
           color: "#102038",
+          resolution: UI_TEXT_RESOLUTION,
         },
       )
       .setOrigin(0.5)
@@ -294,6 +296,7 @@ export class BattleScene extends Phaser.Scene {
           fontSize: won ? "42px" : "34px",
           fontStyle: "bold",
           color: "#f7fbff",
+          resolution: UI_TEXT_RESOLUTION,
         },
       )
       .setOrigin(0.5)
@@ -311,6 +314,7 @@ export class BattleScene extends Phaser.Scene {
           fontFamily: UI_FONT,
           fontSize: "14px",
           color: "#a9bfdc",
+          resolution: UI_TEXT_RESOLUTION,
         },
       )
       .setOrigin(0.5)
@@ -365,6 +369,7 @@ export class BattleScene extends Phaser.Scene {
         color: "#f5fbff",
         backgroundColor: "#172744",
         padding: { x: 12, y: 7 },
+        resolution: UI_TEXT_RESOLUTION,
       })
       .setOrigin(1, 0)
       .setDepth(40)

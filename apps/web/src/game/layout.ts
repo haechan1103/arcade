@@ -6,6 +6,9 @@ const hasCompactPointer =
     Math.min(window.screen.width, window.screen.height) <= 1_024);
 
 export const IS_COMPACT_LAYOUT = hasCompactPointer;
+export const UI_TEXT_RESOLUTION = IS_COMPACT_LAYOUT
+  ? 2
+  : Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 export const GAME_WIDTH = IS_COMPACT_LAYOUT ? 800 : 1100;
 export const GAME_HEIGHT = IS_COMPACT_LAYOUT ? 680 : 720;
 export const BOARD_X = IS_COMPACT_LAYOUT ? 40 : 34;

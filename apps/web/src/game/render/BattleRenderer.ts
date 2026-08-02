@@ -35,6 +35,7 @@ import {
   SIDEBAR_X,
   TILE_SIZE,
   UI_FONT,
+  UI_TEXT_RESOLUTION,
   isPortraitLayout,
   worldToScreenX,
   worldToScreenY,
@@ -426,6 +427,7 @@ export class BattleRenderer {
         fontSize: `${fontSize}px`,
         fontStyle: fontWeight >= 800 ? "bold" : "normal",
         color,
+        resolution: UI_TEXT_RESOLUTION,
       })
       .setDepth(6);
   }

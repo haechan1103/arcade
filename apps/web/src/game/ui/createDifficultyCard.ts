@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { UI_FONT } from "../layout";
+import { UI_FONT, UI_TEXT_RESOLUTION } from "../layout";
 
 export interface DifficultyCardOptions {
   width: number;
@@ -59,6 +59,7 @@ export function createDifficultyCard(
         fontSize: tile ? "14px" : "16px",
         fontStyle: "bold",
         color: "#f6fbff",
+        resolution: UI_TEXT_RESOLUTION,
       },
     )
     .setOrigin(0.5);
@@ -73,6 +74,7 @@ export function createDifficultyCard(
       fontStyle: "bold",
       color: "#7189ae",
       letterSpacing: 1.4,
+      resolution: UI_TEXT_RESOLUTION,
     })
     .setOrigin(0, 0.5);
   const title = scene.add
@@ -81,6 +83,7 @@ export function createDifficultyCard(
       fontSize: tile ? "23px" : "26px",
       fontStyle: "bold",
       color: "#f7fbff",
+      resolution: UI_TEXT_RESOLUTION,
     })
     .setOrigin(0, 0.5);
   const description = scene.add
@@ -92,6 +95,7 @@ export function createDifficultyCard(
         fontFamily: UI_FONT,
         fontSize: tile ? "12px" : "17px",
         color: "#a7b9d5",
+        resolution: UI_TEXT_RESOLUTION,
         wordWrap: {
           width: tile ? width - 48 : width - 290,
           useAdvancedWrap: true,
@@ -126,6 +130,7 @@ export function createDifficultyCard(
       fontSize: tile ? "10px" : "13px",
       fontStyle: "bold",
       color: "#eefaff",
+      resolution: UI_TEXT_RESOLUTION,
     })
     .setOrigin(0.5);
 
@@ -139,6 +144,7 @@ export function createDifficultyCard(
         fontSize: tile ? "9px" : "12px",
         fontStyle: "bold",
         color: "#657fa7",
+        resolution: UI_TEXT_RESOLUTION,
       },
     )
     .setOrigin(tile ? 0 : 1, 0.5);
@@ -176,6 +182,7 @@ export function createDifficultyCard(
       fontSize: tile ? "25px" : "28px",
       fontStyle: "bold",
       color: "#dceaff",
+      resolution: UI_TEXT_RESOLUTION,
     })
     .setOrigin(0.5);
   const hitTarget = scene.add
@@ -215,14 +222,6 @@ export function createDifficultyCard(
       width - 4,
       Math.max(22, height * 0.42),
       radius - 2,
-    );
-    surface.fillStyle(accentColor, hovered ? 1 : 0.84);
-    surface.fillRoundedRect(
-      left + 8,
-      -height / 2 + 14,
-      5,
-      height - 28,
-      2.5,
     );
     surface.lineStyle(hovered ? 2 : 1.2, accentColor, hovered ? 0.8 : 0.34);
     surface.strokeRoundedRect(left, -height / 2, width, height, radius);
