@@ -13,6 +13,7 @@ import {
 } from "@bubble-battle/game-core";
 import Phaser from "phaser";
 import {
+  BRAND_LOGO,
   CHARACTER_FRAME,
   CHARACTER_SHEET,
   OBJECT_FRAME,
@@ -94,6 +95,7 @@ export class BattleRenderer {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly effectGraphics: Phaser.GameObjects.Graphics;
   private readonly overlayGraphics: Phaser.GameObjects.Graphics;
+  private readonly brandLogo: Phaser.GameObjects.Image | null;
   private readonly titleText: Phaser.GameObjects.Text;
   private readonly mapText: Phaser.GameObjects.Text;
   private readonly timeText: Phaser.GameObjects.Text;
@@ -134,6 +136,12 @@ export class BattleRenderer {
       "#f6fbff",
       900,
     ).setLineSpacing(-8);
+    this.brandLogo = scene.textures.exists(BRAND_LOGO)
+      ? scene.add
+          .image(SIDEBAR_X + 141, 74, BRAND_LOGO)
+          .setDisplaySize(214, 86)
+          .setDepth(6)
+      : null;
     this.mapText = this.makeText(
       SIDEBAR_X + 20,
       132,
@@ -261,6 +269,10 @@ export class BattleRenderer {
       this.seedText,
     ]) {
       text.setVisible(!IS_COMPACT_LAYOUT);
+    }
+    if (this.brandLogo !== null) {
+      this.titleText.setVisible(false);
+      this.brandLogo.setVisible(!IS_COMPACT_LAYOUT);
     }
 
     this.overlayPrimary = this.makeText(

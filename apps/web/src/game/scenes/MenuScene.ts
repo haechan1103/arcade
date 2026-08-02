@@ -1,7 +1,10 @@
 import type { Difficulty } from "@bubble-battle/game-core";
 import Phaser from "phaser";
 import { soundFx } from "../audio/SoundFx";
-import { preloadGeneratedAssets } from "../assets";
+import {
+  BRAND_LOGO,
+  preloadGeneratedAssets,
+} from "../assets";
 import {
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -69,9 +72,8 @@ export class MenuScene extends Phaser.Scene {
     this.backgroundGraphics = this.add.graphics().setDepth(0);
     this.createBubbles();
 
-    const titleSize = portrait ? 62 : IS_COMPACT_LAYOUT ? 68 : 86;
-    const titleTop = portrait ? 58 : IS_COMPACT_LAYOUT ? 80 : 103;
-    const titleBottom = portrait ? 113 : IS_COMPACT_LAYOUT ? 143 : 181;
+    const logoWidth = portrait ? 350 : IS_COMPACT_LAYOUT ? 410 : 450;
+    const logoY = portrait ? 84 : IS_COMPACT_LAYOUT ? 109 : 132;
     const taglineY = portrait ? 174 : IS_COMPACT_LAYOUT ? 205 : 245;
     const difficultyLabelY = portrait
       ? 235
@@ -89,28 +91,13 @@ export class MenuScene extends Phaser.Scene {
       GAME_WIDTH / 2 -
       difficultyGap * ((DIFFICULTIES.length - 1) / 2);
 
-    this.add
-      .text(GAME_WIDTH / 2, titleTop, "BUBBLE", {
-        fontFamily: UI_FONT,
-        fontSize: `${titleSize}px`,
-        fontStyle: "bold",
-        color: "#f7fcff",
-        stroke: "#123852",
-        strokeThickness: 10,
-      })
-      .setOrigin(0.5)
+    const logo = this.add
+      .image(GAME_WIDTH / 2, logoY, BRAND_LOGO)
       .setDepth(2);
-    this.add
-      .text(GAME_WIDTH / 2, titleBottom, "BATTLE", {
-        fontFamily: UI_FONT,
-        fontSize: `${titleSize}px`,
-        fontStyle: "bold",
-        color: "#62e9ff",
-        stroke: "#123852",
-        strokeThickness: 10,
-      })
-      .setOrigin(0.5)
-      .setDepth(2);
+    logo.setDisplaySize(
+      logoWidth,
+      logoWidth * (logo.height / logo.width),
+    );
     this.add
       .text(
         GAME_WIDTH / 2,
