@@ -2,13 +2,23 @@ import Phaser from "phaser";
 
 export const CHARACTER_SHEET = "generated-characters";
 export const OBJECT_SHEET = "generated-objects";
+export const BLAST_SHEET = "generated-blast-animation";
 export const BRAND_LOGO = "bubble-battle-logo";
 
 export const CHARACTER_FRAME = {
   humanIdle: 0,
-  botIdle: 1,
-  humanWalk: 2,
-  botWalk: 3,
+  humanWalkA: 1,
+  humanWalkB: 2,
+  botIdle: 3,
+  botWalkA: 4,
+  botWalkB: 5,
+} as const;
+
+export const BLAST_FRAME = {
+  pop: 0,
+  expand: 1,
+  peak: 2,
+  dissipate: 3,
 } as const;
 
 export const OBJECT_FRAME = {
@@ -40,8 +50,15 @@ export function preloadGeneratedAssets(scene: Phaser.Scene): void {
   if (!scene.textures.exists(CHARACTER_SHEET)) {
     scene.load.spritesheet(
       CHARACTER_SHEET,
-      "/assets/generated/character-sheet.png",
-      { frameWidth: 512, frameHeight: 512 },
+      "/assets/generated/character-animation-sheet.png",
+      { frameWidth: 256, frameHeight: 256 },
+    );
+  }
+  if (!scene.textures.exists(BLAST_SHEET)) {
+    scene.load.spritesheet(
+      BLAST_SHEET,
+      "/assets/generated/blast-animation-sheet.png",
+      { frameWidth: 256, frameHeight: 256 },
     );
   }
   if (!scene.textures.exists(OBJECT_SHEET)) {

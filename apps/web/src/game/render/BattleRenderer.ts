@@ -5,6 +5,7 @@ import {
   TICK_RATE,
   TILE_UNITS,
   type AiDebugInfo,
+  type BlastState,
   type Cell,
   type GameEvent,
   type GameState,
@@ -13,6 +14,8 @@ import {
 } from "@bubble-battle/game-core";
 import Phaser from "phaser";
 import {
+  BLAST_FRAME,
+  BLAST_SHEET,
   BRAND_LOGO,
   CHARACTER_FRAME,
   CHARACTER_SHEET,
@@ -80,6 +83,9 @@ const PICKUP_FRAME: Readonly<Record<ItemType, number>> = {
   speed: OBJECT_FRAME.speed,
   needle: OBJECT_FRAME.needle,
 };
+
+const CHARACTER_SIZE = 58;
+const WALK_FRAME_MS = 125;
 
 const BOT_MODE_LABELS: Record<AiDebugInfo["mode"], string> = {
   escape: "위험 회피 중",
@@ -685,7 +691,7 @@ export class BattleRenderer {
 
     for (const blast of state.blasts) {
       for (const cell of blast.cells) {
-        this.drawBlast(cell, elapsedMs);
+        this.drawBlast(blast, cell, state.tick, elapsedMs);
       }
     }
 
@@ -698,7 +704,17 @@ export class BattleRenderer {
         previous.x + (player.x - previous.x) * interpolation;
       const y =
         previous.y + (player.y - previous.y) * interpolation;
-      this.drawPlayer(player, x, y, elapsedMs, state.tick);
+      const isMoving =
+        Math.abs(player.x - previous.x) > 0.5 ||
+        Math.abs(player.y - previous.y) > 0.5;
+      this.drawPlayer(
+        player,
+        x,
+        y,
+        isMoving,
+        elapsedMs,
+        state.tick,
+      );
     }
   }
 
@@ -889,9 +905,60 @@ export class BattleRenderer {
     this.graphics.strokePath();
   }
 
-  private drawBlast(cell: Cell, elapsedMs: number): void {
+  private drawBlast(
+    blast: BlastState,
+    cell: Cell,
+    currentTick: number,
+    elapsedMs: number,
+  ): void {
     const { x, y } = cellToScreen(cell.col, cell.row);
-    const pulse = Math.sin(elapsedMs * 0.03 + cell.col + cell.row) * 2;
+    const duration = Math.max(1, blast.expireTick - blast.createdTick);
+    const progress = Phaser.Math.Clamp(
+      (currentTick - blast.createdTick) / duration,
+      0,
+      0.999,
+    );
+    const frame = Math.min(
+      BLAST_FRAME.dissipate,
+      Math.floor(progress * 4),
+    );
+    const flashOn =
+      (Math.floor(elapsedMs / 55) + cell.col + cell.row) % 2 === 0;
+    const pulse = Math.sin(elapsedMs * 0.035 + cell.col + cell.row);
+
+    if (
+      this.drawSprite(
+        BLAST_SHEET,
+        frame,
+        x + TILE_SIZE / 2,
+        y + TILE_SIZE / 2,
+        {
+          width: TILE_SIZE + 18 + pulse * 1.5,
+          height: TILE_SIZE + 18 + pulse * 1.5,
+          depth: 4,
+          alpha: flashOn ? 1 : 0.76,
+          angle: (cell.col + cell.row) % 2 === 0 ? -4 : 4,
+        },
+      ) !== null
+    ) {
+      if (frame === BLAST_FRAME.peak && flashOn) {
+        this.drawSprite(
+          OBJECT_SHEET,
+          OBJECT_FRAME.sparkle,
+          x + TILE_SIZE / 2,
+          y + TILE_SIZE / 2,
+          {
+            width: TILE_SIZE + 10,
+            height: TILE_SIZE + 10,
+            depth: 4.1,
+            alpha: 0.32,
+            angle: (elapsedMs * 0.08) % 360,
+          },
+        );
+      }
+      return;
+    }
+
     if (
       this.drawSprite(
         OBJECT_SHEET,
@@ -899,8 +966,8 @@ export class BattleRenderer {
         x + TILE_SIZE / 2,
         y + TILE_SIZE / 2,
         {
-          width: TILE_SIZE + 8 + pulse,
-          height: TILE_SIZE + 8 + pulse,
+          width: TILE_SIZE + 8 + pulse * 2,
+          height: TILE_SIZE + 8 + pulse * 2,
           depth: 4,
           alpha: 0.9,
           angle: (cell.col + cell.row) % 2 === 0 ? 0 : 45,
@@ -933,6 +1000,7 @@ export class BattleRenderer {
     player: PlayerState,
     worldX: number,
     worldY: number,
+    isMoving: boolean,
     elapsedMs: number,
     currentTick: number,
   ): void {
@@ -942,7 +1010,9 @@ export class BattleRenderer {
 
     const x = worldToScreenX(worldX);
     const y = worldToScreenY(worldY);
-    const bob = Math.sin(elapsedMs * 0.008 + player.id) * 1.4;
+    const bob = isMoving
+      ? Math.sin(elapsedMs * 0.025 + player.id) * 0.75
+      : Math.sin(elapsedMs * 0.006 + player.id) * 0.35;
 
     if (
       this.drawGeneratedPlayer(
@@ -950,6 +1020,7 @@ export class BattleRenderer {
         x,
         y,
         bob,
+        isMoving,
         elapsedMs,
         currentTick,
       )
@@ -1053,6 +1124,7 @@ export class BattleRenderer {
     x: number,
     y: number,
     bob: number,
+    isMoving: boolean,
     elapsedMs: number,
     currentTick: number,
   ): boolean {
@@ -1067,33 +1139,42 @@ export class BattleRenderer {
         x,
         y + 19,
         {
-          width: 43,
-          height: 19,
+          width: 34,
+          height: 14,
           depth: 4.4,
           alpha: 0.68,
         },
       );
     }
 
-    const horizontal =
-      player.direction === "left" || player.direction === "right";
-    const frame =
-      player.team === 1
-        ? horizontal
-          ? CHARACTER_FRAME.humanWalk
-          : CHARACTER_FRAME.humanIdle
-        : horizontal
-          ? CHARACTER_FRAME.botWalk
-          : CHARACTER_FRAME.botIdle;
+    const secondFootfall =
+      (Math.floor(elapsedMs / WALK_FRAME_MS) + player.id) % 2 === 1;
+    const footfallOffset = isMoving
+      ? secondFootfall
+        ? 0.7
+        : -0.7
+      : 0;
+    const frame = player.team === 1
+      ? isMoving
+        ? secondFootfall
+          ? CHARACTER_FRAME.humanWalkB
+          : CHARACTER_FRAME.humanWalkA
+        : CHARACTER_FRAME.humanIdle
+      : isMoving
+        ? secondFootfall
+          ? CHARACTER_FRAME.botWalkB
+          : CHARACTER_FRAME.botWalkA
+        : CHARACTER_FRAME.botIdle;
     const character = this.drawSprite(
       CHARACTER_SHEET,
       frame,
       x,
-      y - 5 + bob,
+      y + bob + footfallOffset,
       {
-        width: 82,
-        height: 82,
+        width: CHARACTER_SIZE,
+        height: CHARACTER_SIZE,
         depth: 5,
+        angle: isMoving ? (secondFootfall ? -1.1 : 1.1) : 0,
         flipX: player.direction === "left",
         alpha:
           player.invulnerableUntilTick > currentTick
@@ -1114,8 +1195,8 @@ export class BattleRenderer {
         x,
         y - 3,
         {
-          width: 72 + bubblePulse,
-          height: 72 + bubblePulse,
+          width: 62 + bubblePulse,
+          height: 62 + bubblePulse,
           depth: 5.4,
           alpha: 0.9,
         },
@@ -1133,8 +1214,8 @@ export class BattleRenderer {
         x,
         y - 2,
         {
-          width: 76,
-          height: 76,
+          width: 64,
+          height: 64,
           depth: 5.5,
           alpha: 0.52,
           angle: (elapsedMs * 0.04) % 360,
