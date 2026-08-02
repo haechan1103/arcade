@@ -12,7 +12,7 @@ import {
   UI_FONT,
   isPortraitLayout,
 } from "../layout";
-import { createButton } from "../ui/createButton";
+import { createDifficultyCard } from "../ui/createDifficultyCard";
 
 interface FloatingBubble {
   x: number;
@@ -29,28 +29,32 @@ const DIFFICULTIES: Array<{
   label: string;
   subtitle: string;
   color: number;
-  hoverColor: number;
+  tag: string;
+  power: number;
 }> = [
   {
     id: "easy",
     label: "느긋한 봇",
-    subtitle: "처음 익히기 좋은 반응 속도",
+    subtitle: "천천히 움직이며 기본 공격을 연습해요",
     color: 0x63dfb0,
-    hoverColor: 0x81edc4,
+    tag: "입문",
+    power: 1,
   },
   {
     id: "normal",
     label: "영리한 봇",
-    subtitle: "추천 · 위험과 공격을 균형 있게",
+    subtitle: "위험 회피와 공격을 균형 있게 판단해요",
     color: 0x42cce8,
-    hoverColor: 0x67def3,
+    tag: "추천",
+    power: 2,
   },
   {
     id: "hard",
     label: "집요한 봇",
-    subtitle: "빠른 판단과 적극적인 포위",
+    subtitle: "빠르게 길을 막고 탈출 경로를 압박해요",
     color: 0xff6f99,
-    hoverColor: 0xff8caf,
+    tag: "도전",
+    power: 3,
   },
 ];
 
@@ -68,25 +72,19 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     const portrait = isPortraitLayout();
+    const compact = IS_COMPACT_LAYOUT;
     this.cameras.main.setBackgroundColor("#090f28");
     this.backgroundGraphics = this.add.graphics().setDepth(0);
     this.createBubbles();
 
-    const logoWidth = portrait ? 350 : IS_COMPACT_LAYOUT ? 410 : 450;
-    const logoY = portrait ? 84 : IS_COMPACT_LAYOUT ? 109 : 132;
-    const taglineY = portrait ? 174 : IS_COMPACT_LAYOUT ? 205 : 245;
-    const difficultyLabelY = portrait
-      ? 235
-      : IS_COMPACT_LAYOUT
-        ? 270
-        : 307;
-    const difficultyY = portrait ? 292 : IS_COMPACT_LAYOUT ? 362 : 383;
-    const difficultyWidth = portrait
-      ? 590
-      : IS_COMPACT_LAYOUT
-        ? 216
-        : 282;
-    const difficultyGap = IS_COMPACT_LAYOUT ? 230 : 316;
+    const logoWidth = compact ? 340 : 450;
+    const logoY = compact ? 78 : 126;
+    const taglineY = compact ? 160 : 240;
+    const difficultyLabelY = compact ? 211 : 304;
+    const difficultyY = compact ? 282 : 398;
+    const difficultyWidth = compact ? 620 : 300;
+    const difficultyHeight = compact ? 92 : 124;
+    const difficultyGap = compact ? 102 : 326;
     const startX =
       GAME_WIDTH / 2 -
       difficultyGap * ((DIFFICULTIES.length - 1) / 2);
@@ -107,40 +105,97 @@ export class MenuScene extends Phaser.Scene {
           : "물풍선을 놓고, 길을 만들고, 먼저 상대를 가두세요.",
         {
           fontFamily: UI_FONT,
-          fontSize: portrait ? "22px" : "18px",
+          fontSize: compact ? "19px" : "18px",
           color: "#b8cce9",
         },
       )
       .setOrigin(0.5)
       .setDepth(2);
 
+    const sectionWidth = compact ? 680 : 990;
+    const sectionHeight = compact ? 324 : 154;
+    const sectionY = compact ? 388 : 401;
+    const difficultyPanel = this.add.graphics().setDepth(1.5);
+    difficultyPanel.fillStyle(0x08152d, 0.56);
+    difficultyPanel.fillRoundedRect(
+      GAME_WIDTH / 2 - sectionWidth / 2,
+      sectionY - sectionHeight / 2,
+      sectionWidth,
+      sectionHeight,
+      25,
+    );
+    difficultyPanel.lineStyle(1, 0x8fdfff, 0.1);
+    difficultyPanel.strokeRoundedRect(
+      GAME_WIDTH / 2 - sectionWidth / 2,
+      sectionY - sectionHeight / 2,
+      sectionWidth,
+      sectionHeight,
+      25,
+    );
+
     this.add
-      .text(GAME_WIDTH / 2, difficultyLabelY, "AI 난이도 선택", {
+      .rectangle(
+        GAME_WIDTH / 2 - (compact ? 126 : 142),
+        difficultyLabelY,
+        compact ? 56 : 70,
+        1,
+        0x8fdfff,
+        0.16,
+      )
+      .setDepth(2);
+    this.add
+      .text(GAME_WIDTH / 2, difficultyLabelY, "AI 난이도", {
         fontFamily: UI_FONT,
-        fontSize: portrait ? "22px" : "15px",
+        fontSize: compact ? "19px" : "15px",
         fontStyle: "bold",
-        color: "#7894bd",
+        color: "#91aed3",
       })
       .setOrigin(0.5)
       .setDepth(2);
+    this.add
+      .rectangle(
+        GAME_WIDTH / 2 + (compact ? 126 : 142),
+        difficultyLabelY,
+        compact ? 56 : 70,
+        1,
+        0x8fdfff,
+        0.16,
+      )
+      .setDepth(2);
+    if (!compact) {
+      this.add
+        .text(
+          GAME_WIDTH / 2,
+          difficultyLabelY + 22,
+          "카드를 누르면 바로 대결이 시작돼요",
+          {
+            fontFamily: UI_FONT,
+            fontSize: "11px",
+            color: "#566f96",
+          },
+        )
+        .setOrigin(0.5)
+        .setDepth(2);
+    }
 
     DIFFICULTIES.forEach((difficulty, index) => {
-      createButton(
+      createDifficultyCard(
         this,
-        portrait
+        compact
           ? GAME_WIDTH / 2
           : startX + index * difficultyGap,
-        portrait ? difficultyY + index * 106 : difficultyY,
+        compact ? difficultyY + index * difficultyGap : difficultyY,
         difficulty.label,
         () => this.startBattle(difficulty.id),
         {
           width: difficultyWidth,
-          height: portrait ? 94 : IS_COMPACT_LAYOUT ? 76 : 82,
-          color: difficulty.color,
-          hoverColor: difficulty.hoverColor,
-          fontSize: portrait ? 28 : IS_COMPACT_LAYOUT ? 19 : 22,
+          height: difficultyHeight,
+          accentColor: difficulty.color,
+          level: index + 1,
           subtitle: difficulty.subtitle,
-          subtitleFontSize: portrait ? 20 : 12,
+          tag: difficulty.tag,
+          power: difficulty.power,
+          layout: compact ? "row" : "tile",
         },
       ).setDepth(3);
     });
@@ -148,8 +203,8 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .rectangle(
         GAME_WIDTH / 2,
-        portrait ? 568 : IS_COMPACT_LAYOUT ? 454 : 510,
-        portrait ? 590 : IS_COMPACT_LAYOUT ? 610 : 770,
+        compact ? 560 : 515,
+        compact ? 610 : 770,
         1,
         0xffffff,
         0.12,
@@ -158,15 +213,15 @@ export class MenuScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        portrait ? 610 : IS_COMPACT_LAYOUT ? 500 : 552,
+        compact ? 592 : 557,
         portrait
           ? "가로로 돌리면 더 넓게 플레이할 수 있어요"
-          : IS_COMPACT_LAYOUT
+          : compact
           ? "화면 버튼으로 이동 · 물풍선으로 공격 · ⛶ 전체화면"
           : "방향키 / WASD로 이동     SPACE로 물풍선     E로 바늘 사용",
         {
           fontFamily: UI_FONT,
-          fontSize: portrait ? "20px" : "14px",
+          fontSize: portrait ? "18px" : compact ? "15px" : "14px",
           color: "#91a8ca",
         },
       )
@@ -176,7 +231,7 @@ export class MenuScene extends Phaser.Scene {
       this.add
         .text(
           GAME_WIDTH / 2,
-          IS_COMPACT_LAYOUT ? 560 : 614,
+          compact ? 628 : 620,
           "3 RANDOM ARENAS  ·  LOCAL 1 VS 1  ·  NO SERVER",
           {
             fontFamily: UI_FONT,
@@ -191,7 +246,7 @@ export class MenuScene extends Phaser.Scene {
       this.add
         .text(
           GAME_WIDTH / 2,
-          IS_COMPACT_LAYOUT ? 622 : 672,
+          compact ? 660 : 672,
           "원작 에셋을 사용하지 않은 독립 프로토타입",
           {
             fontFamily: UI_FONT,
