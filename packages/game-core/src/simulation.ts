@@ -1,23 +1,20 @@
 import {
-  ANALOG_INPUT_SCALE,
   BALLOON_FUSE_TICKS,
   BLAST_DURATION_TICKS,
-  CORNER_ASSIST_UNITS,
-  HALF_TILE,
   MAX_BALLOON_CAPACITY,
   MAX_BLAST_RANGE,
   MAX_NEEDLES,
-  MAX_SPEED_LEVEL,
+  MAX_SPEED_STAT,
   NEEDLE_INVULNERABILITY_TICKS,
   PLAYER_BODY_HALF,
   ROUND_DURATION_TICKS,
-  SPEED_UNITS_PER_TICK,
   STORM_RING_INTERVAL_TICKS,
   STORM_START_TICK,
   STORM_TRAP_DURATION_TICKS,
   TILE_UNITS,
   TRAPPED_DURATION_TICKS,
   TRAPPED_SPEED_UNITS_PER_TICK,
+  speedUnitsPerTick,
 } from "./config";
 import {
   balloonAt,
@@ -33,7 +30,6 @@ import {
   toIndex,
 } from "./geometry";
 import type {
-  AnalogMove,
   BalloonState,
   BlastState,
   Cell,
@@ -150,17 +146,10 @@ function moveAlongAxis(
   player[axis] = start + sign * low;
 }
 
-function nearestTileCenter(value: number): number {
-  return (
-    Math.round((value - HALF_TILE) / TILE_UNITS) * TILE_UNITS + HALF_TILE
-  );
-}
-
 function playerSpeed(player: PlayerState): number {
   return player.status === "trapped"
     ? TRAPPED_SPEED_UNITS_PER_TICK
-    : (SPEED_UNITS_PER_TICK[player.speedLevel] ??
-        SPEED_UNITS_PER_TICK[0]);
+    : speedUnitsPerTick(player.speedStat);
 }
 
 function movePlayerInDirection(
@@ -173,109 +162,18 @@ function movePlayerInDirection(
   const vector = DIRECTION_VECTOR[direction];
 
   if (vector.col !== 0) {
-    const centerY = nearestTileCenter(player.y);
-    const offsetY = centerY - player.y;
-    if (Math.abs(offsetY) <= CORNER_ASSIST_UNITS) {
-      moveAlongAxis(
-        state,
-        player,
-        "y",
-        Math.sign(offsetY) * Math.min(Math.abs(offsetY), baseSpeed),
-      );
-    }
     moveAlongAxis(state, player, "x", vector.col * baseSpeed);
     return;
-  } else {
-    const centerX = nearestTileCenter(player.x);
-    const offsetX = centerX - player.x;
-    if (Math.abs(offsetX) <= CORNER_ASSIST_UNITS) {
-      moveAlongAxis(
-        state,
-        player,
-        "x",
-        Math.sign(offsetX) * Math.min(Math.abs(offsetX), baseSpeed),
-      );
-    }
-    moveAlongAxis(state, player, "y", vector.row * baseSpeed);
   }
-}
-
-function normalizeAnalogMove(move: AnalogMove): AnalogMove | null {
-  if (!Number.isFinite(move.x) || !Number.isFinite(move.y)) {
-    return null;
-  }
-
-  const x = Math.max(
-    -ANALOG_INPUT_SCALE,
-    Math.min(ANALOG_INPUT_SCALE, Math.round(move.x)),
-  );
-  const y = Math.max(
-    -ANALOG_INPUT_SCALE,
-    Math.min(ANALOG_INPUT_SCALE, Math.round(move.y)),
-  );
-  const magnitude = Math.hypot(x, y);
-  if (magnitude === 0) {
-    return null;
-  }
-  if (magnitude <= ANALOG_INPUT_SCALE) {
-    return { x, y };
-  }
-
-  const scale = ANALOG_INPUT_SCALE / magnitude;
-  return {
-    x: Math.round(x * scale),
-    y: Math.round(y * scale),
-  };
-}
-
-function directionFromAnalogMove(move: AnalogMove): Direction {
-  if (Math.abs(move.x) >= Math.abs(move.y)) {
-    return move.x >= 0 ? "right" : "left";
-  }
-  return move.y >= 0 ? "down" : "up";
-}
-
-function movePlayerAnalog(
-  state: GameState,
-  player: PlayerState,
-  analogMove: AnalogMove,
-  facingDirection: Direction | null,
-): void {
-  const vector = normalizeAnalogMove(analogMove);
-  if (vector === null) {
-    return;
-  }
-
-  player.direction = facingDirection ?? directionFromAnalogMove(vector);
-  const baseSpeed = playerSpeed(player);
-  const deltaX = Math.round(
-    (vector.x * baseSpeed) / ANALOG_INPUT_SCALE,
-  );
-  const deltaY = Math.round(
-    (vector.y * baseSpeed) / ANALOG_INPUT_SCALE,
-  );
-
-  if (Math.abs(deltaX) >= Math.abs(deltaY)) {
-    moveAlongAxis(state, player, "x", deltaX);
-    moveAlongAxis(state, player, "y", deltaY);
-  } else {
-    moveAlongAxis(state, player, "y", deltaY);
-    moveAlongAxis(state, player, "x", deltaX);
-  }
+  moveAlongAxis(state, player, "y", vector.row * baseSpeed);
 }
 
 function movePlayer(
   state: GameState,
   player: PlayerState,
   direction: Direction | null,
-  analogMove: AnalogMove | null,
 ): void {
   if (player.status === "dead") {
-    return;
-  }
-
-  if (analogMove !== null) {
-    movePlayerAnalog(state, player, analogMove, direction);
     return;
   }
 
@@ -400,9 +298,9 @@ function applyPickup(player: PlayerState, itemType: ItemType): void {
       player.blastRange + 1,
     );
   } else if (itemType === "speed") {
-    player.speedLevel = Math.min(
-      MAX_SPEED_LEVEL,
-      player.speedLevel + 1,
+    player.speedStat = Math.min(
+      MAX_SPEED_STAT,
+      player.speedStat + 1,
     );
   } else {
     player.needles = Math.min(MAX_NEEDLES, player.needles + 1);
@@ -759,13 +657,18 @@ function applyHazards(
   state: GameState,
   events: GameEvent[],
 ): void {
+  const activeBlastCells = state.blasts.flatMap(
+    (blast) => blast.cells,
+  );
+
   for (const player of state.players) {
     if (player.status !== "alive") {
       continue;
     }
 
-    const touchesBlast = state.blasts.some((blast) =>
-      blast.cells.some((cell) => blastIntersectsPlayer(player, cell)),
+    const touchesBlast = blastIntersectsPlayer(
+      player,
+      activeBlastCells,
     );
     if (touchesBlast) {
       trapPlayer(state, player, "blast", events);
@@ -913,7 +816,6 @@ export function stepGame(
       state,
       player,
       input?.move ?? null,
-      input?.analogMove ?? null,
     );
   }
 

@@ -1,10 +1,10 @@
 import {
   BALLOON_FUSE_TICKS,
   BLAST_DURATION_TICKS,
-  SPEED_UNITS_PER_TICK,
   STORM_RING_INTERVAL_TICKS,
   STORM_START_TICK,
   TILE_UNITS,
+  speedUnitsPerTick,
 } from "./config";
 import {
   balloonAt,
@@ -277,9 +277,7 @@ function playerHasDangerSoon(
 }
 
 function travelTicksPerTile(player: PlayerState): number {
-  const speed =
-    SPEED_UNITS_PER_TICK[player.speedLevel] ??
-    SPEED_UNITS_PER_TICK[0];
+  const speed = speedUnitsPerTick(player.speedStat);
   return Math.ceil(TILE_UNITS / speed);
 }
 

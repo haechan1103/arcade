@@ -86,7 +86,8 @@ const PICKUP_FRAME: Readonly<Record<ItemType, number>> = {
   needle: OBJECT_FRAME.needle,
 };
 
-const CHARACTER_SIZE = 58;
+const CHARACTER_SIZE = 82;
+const CHARACTER_FOOT_ANCHOR_OFFSET = 31;
 const WALK_FRAME_MS = 125;
 const BALLOON_WARNING_TICKS = Math.round(TICK_RATE * 1.25);
 
@@ -1180,9 +1181,9 @@ export class BattleRenderer {
         OBJECT_SHEET,
         OBJECT_FRAME.shadow,
         x,
-        y + 19,
+        y + 2,
         {
-          width: 34,
+          width: 40,
           height: 14,
           depth: 4.4,
           alpha: 0.68,
@@ -1212,7 +1213,7 @@ export class BattleRenderer {
       CHARACTER_SHEET,
       frame,
       x,
-      y + bob + footfallOffset,
+      y - CHARACTER_FOOT_ANCHOR_OFFSET + bob + footfallOffset,
       {
         width: CHARACTER_SIZE,
         height: CHARACTER_SIZE,
@@ -1236,10 +1237,10 @@ export class BattleRenderer {
         OBJECT_SHEET,
         OBJECT_FRAME.trappedBubble,
         x,
-        y - 3,
+        y - CHARACTER_FOOT_ANCHOR_OFFSET,
         {
-          width: 62 + bubblePulse,
-          height: 62 + bubblePulse,
+          width: 74 + bubblePulse,
+          height: 74 + bubblePulse,
           depth: 5.4,
           alpha: 0.9,
         },
@@ -1255,10 +1256,10 @@ export class BattleRenderer {
         OBJECT_SHEET,
         OBJECT_FRAME.sparkle,
         x,
-        y - 2,
+        y - CHARACTER_FOOT_ANCHOR_OFFSET,
         {
-          width: 64,
-          height: 64,
+          width: 78,
+          height: 78,
           depth: 5.5,
           alpha: 0.52,
           angle: (elapsedMs * 0.04) % 360,
@@ -1398,7 +1399,7 @@ export class BattleRenderer {
           ? "×"
           : "";
     const needle = includeNeedle ? `  ◇${player.needles}` : "";
-    return `${label}${status}  ●${player.activeBalloons}/${player.balloonCapacity}  ✦${player.blastRange}  »${player.speedLevel + 1}${needle}`;
+    return `${label}${status}  ●${player.activeBalloons}/${player.balloonCapacity}  ✦${player.blastRange}  »${player.speedStat}${needle}`;
   }
 
   private compactStatusColor(
@@ -1456,7 +1457,7 @@ export class BattleRenderer {
           : "OUT";
     return [
       `● 풍선  ${player.activeBalloons}/${player.balloonCapacity}     ✦ 사거리  ${player.blastRange}`,
-      `» 속도  ${player.speedLevel + 1}       ◇ 바늘  ${player.needles}`,
+      `» 속도  ${player.speedStat}       ◇ 바늘  ${player.needles}`,
       status,
     ].join("\n");
   }

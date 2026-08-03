@@ -1,7 +1,9 @@
 import {
-  BLAST_HITBOX_HALF,
+  BLAST_HIT_COVERAGE_PERCENT,
   HALF_TILE,
   PLAYER_BODY_HALF,
+  PLAYER_FEET_HITBOX_HALF_HEIGHT,
+  PLAYER_FEET_HITBOX_HALF_WIDTH,
   TILE_UNITS,
 } from "./config";
 import type {
@@ -73,9 +75,46 @@ export function bodyIntersectsCell(
 
 export function blastIntersectsPlayer(
   player: PlayerState,
-  cell: Cell,
+  cells: ReadonlyArray<Cell>,
 ): boolean {
-  return playerHitboxIntersectsCell(player, cell, BLAST_HITBOX_HALF);
+  const left = player.x - PLAYER_FEET_HITBOX_HALF_WIDTH;
+  const top = player.y - PLAYER_FEET_HITBOX_HALF_HEIGHT;
+  const right = player.x + PLAYER_FEET_HITBOX_HALF_WIDTH;
+  const bottom = player.y + PLAYER_FEET_HITBOX_HALF_HEIGHT;
+  const hitboxArea = (right - left) * (bottom - top);
+  const visitedCells = new Set<string>();
+  let coveredArea = 0;
+
+  for (const cell of cells) {
+    const key = cellKey(cell);
+    if (visitedCells.has(key)) {
+      continue;
+    }
+    visitedCells.add(key);
+
+    const cellLeft = cell.col * TILE_UNITS;
+    const cellTop = cell.row * TILE_UNITS;
+    const cellRight = cellLeft + TILE_UNITS;
+    const cellBottom = cellTop + TILE_UNITS;
+    const overlapWidth = Math.max(
+      0,
+      Math.min(right, cellRight) - Math.max(left, cellLeft),
+    );
+    const overlapHeight = Math.max(
+      0,
+      Math.min(bottom, cellBottom) - Math.max(top, cellTop),
+    );
+
+    coveredArea += overlapWidth * overlapHeight;
+    if (
+      coveredArea * 100 >=
+      hitboxArea * BLAST_HIT_COVERAGE_PERCENT
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function playerHitboxIntersectsCell(

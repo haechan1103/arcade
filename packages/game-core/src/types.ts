@@ -26,14 +26,8 @@ export interface MapDefinition {
   mirrorRandomBlocks: boolean;
 }
 
-export interface AnalogMove {
-  x: number;
-  y: number;
-}
-
 export interface PlayerInput {
   move: Direction | null;
-  analogMove?: AnalogMove | null;
   placeBalloon: boolean;
   useNeedle: boolean;
 }
@@ -49,7 +43,7 @@ export interface PlayerState {
   balloonCapacity: number;
   activeBalloons: number;
   blastRange: number;
-  speedLevel: number;
+  speedStat: number;
   needles: number;
   trappedUntilTick: number;
   invulnerableUntilTick: number;
@@ -113,7 +107,7 @@ export interface NewGameOptions {
   map?: MapDefinition;
   mapId?: string;
   playerNames?: readonly [string, string];
-  initialSpeedLevel?: number;
+  initialSpeedStat?: number;
 }
 
 export type GameEvent =

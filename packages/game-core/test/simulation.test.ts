@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  ANALOG_INPUT_SCALE,
   BALLOON_FUSE_TICKS,
-  BLAST_HITBOX_HALF,
+  DEFAULT_SPEED_STAT,
   GAME_MAPS,
   HALF_TILE,
+  MAX_SPEED_STAT,
+  MIN_SPEED_STAT,
   PLAYER_BODY_HALF,
-  SPEED_UNITS_PER_TICK,
+  PLAYER_FEET_HITBOX_HALF_WIDTH,
   STORM_START_TICK,
   TILE_UNITS,
   createGameState,
@@ -16,6 +17,7 @@ import {
   stateHash,
   stepGame,
   selectGameMap,
+  speedUnitsPerTick,
   toIndex,
   type BalloonState,
   type GameState,
@@ -95,20 +97,27 @@ describe("built-in maps", () => {
 
 describe("deterministic simulation", () => {
   it("applies and clamps a configured starting speed", () => {
+    const standard = createGameState({ seed: 10 });
     const boosted = createGameState({
       seed: 10,
-      initialSpeedLevel: 1,
+      initialSpeedStat: MIN_SPEED_STAT,
     });
     const clamped = createGameState({
       seed: 10,
-      initialSpeedLevel: 999,
+      initialSpeedStat: 999,
     });
 
-    expect(boosted.players.map((player) => player.speedLevel)).toEqual([
-      1, 1,
+    expect(standard.players.map((player) => player.speedStat)).toEqual([
+      DEFAULT_SPEED_STAT,
+      DEFAULT_SPEED_STAT,
     ]);
-    expect(clamped.players.map((player) => player.speedLevel)).toEqual([
-      6, 6,
+    expect(boosted.players.map((player) => player.speedStat)).toEqual([
+      MIN_SPEED_STAT,
+      MIN_SPEED_STAT,
+    ]);
+    expect(clamped.players.map((player) => player.speedStat)).toEqual([
+      MAX_SPEED_STAT,
+      MAX_SPEED_STAT,
     ]);
   });
 
@@ -152,7 +161,7 @@ describe("deterministic simulation", () => {
 });
 
 describe("movement", () => {
-  it("keeps the free analog axis moving when the other axis is blocked", () => {
+  it("uses one cardinal axis per tick and can turn along a wall", () => {
     const map = mapFromAscii("wall-slide", "Wall Slide", [
       "#######",
       "#....2#",
@@ -165,17 +174,10 @@ describe("movement", () => {
     human.x = 2 * TILE_UNITS - PLAYER_BODY_HALF;
     const startX = human.x;
     const startY = human.y;
-    const diagonalComponent = Math.round(
-      ANALOG_INPUT_SCALE / Math.SQRT2,
-    );
 
     stepGame(state, {
       1: {
         move: "right",
-        analogMove: {
-          x: diagonalComponent,
-          y: -diagonalComponent,
-        },
         placeBalloon: false,
         useNeedle: false,
       },
@@ -183,47 +185,45 @@ describe("movement", () => {
     });
 
     expect(human.x).toBe(startX);
-    expect(human.y).toBeLessThan(startY);
-    expect(startY - human.y).toBe(
-      Math.round(
-        (diagonalComponent * SPEED_UNITS_PER_TICK[0]) /
-          ANALOG_INPUT_SCALE,
-      ),
-    );
+    expect(human.y).toBe(startY);
     expect(human.direction).toBe("right");
-  });
-
-  it("preserves total speed while moving diagonally", () => {
-    const state = createOpenGame();
-    const human = state.players[0]!;
-    const startX = human.x;
-    const startY = human.y;
-    const diagonalComponent = Math.round(
-      ANALOG_INPUT_SCALE / Math.SQRT2,
-    );
 
     stepGame(state, {
       1: {
-        move: "right",
-        analogMove: {
-          x: diagonalComponent,
-          y: diagonalComponent,
-        },
+        move: "up",
         placeBalloon: false,
         useNeedle: false,
       },
       2: noInput(),
     });
 
-    expect(human.x).toBeGreaterThan(startX);
-    expect(human.y).toBeGreaterThan(startY);
-    expect(
-      Math.abs(
-        Math.hypot(human.x - startX, human.y - startY) -
-          SPEED_UNITS_PER_TICK[0],
-      ),
-    ).toBeLessThanOrEqual(1);
-    expect(human.direction).toBe("right");
+    expect(human.x).toBe(startX);
+    expect(startY - human.y).toBe(
+      speedUnitsPerTick(DEFAULT_SPEED_STAT),
+    );
+    expect(human.direction).toBe("up");
+  });
+
+  it("preserves sub-tile offsets without automatic centering", () => {
+    const state = createOpenGame();
+    const human = state.players[0]!;
+    human.y += 180;
+    const startX = human.x;
+    const startY = human.y;
+
+    stepGame(state, {
+      1: {
+        move: "right",
+        placeBalloon: false,
+        useNeedle: false,
+      },
+      2: noInput(),
+    });
+
+    expect(human.x - startX).toBe(
+      speedUnitsPerTick(DEFAULT_SPEED_STAT),
+    );
+    expect(human.y).toBe(startY);
   });
 });
 
@@ -370,6 +370,30 @@ describe("players and items", () => {
     });
   });
 
+  it("raises the official speed stat by one and clamps at ten", () => {
+    const state = createOpenGame();
+    const human = state.players[0]!;
+    human.speedStat = MAX_SPEED_STAT - 1;
+    state.pickups.push({
+      id: 50,
+      col: 1,
+      row: 1,
+      type: "speed",
+    });
+
+    stepGame(state, emptyInputs());
+    expect(human.speedStat).toBe(MAX_SPEED_STAT);
+
+    state.pickups.push({
+      id: 51,
+      col: 1,
+      row: 1,
+      type: "speed",
+    });
+    stepGame(state, emptyInputs());
+    expect(human.speedStat).toBe(MAX_SPEED_STAT);
+  });
+
   it("traps a player and lets a needle free them", () => {
     const state = createOpenGame();
     state.players[0]!.needles = 1;
@@ -401,9 +425,11 @@ describe("players and items", () => {
     );
   });
 
-  it("ignores a grazing blast until it reaches the player core", () => {
+  it("requires 66 percent of the foot hitbox to be covered", () => {
     const state = createOpenGame();
     const human = state.players[0]!;
+    const blastBoundary = 2 * TILE_UNITS;
+    const hitboxWidth = PLAYER_FEET_HITBOX_HALF_WIDTH * 2;
     state.blasts.push({
       id: 70,
       balloonId: 71,
@@ -412,13 +438,69 @@ describe("players and items", () => {
       createdTick: 0,
       expireTick: 20,
     });
-    human.x = 2 * TILE_UNITS - BLAST_HITBOX_HALF;
+    human.x =
+      blastBoundary -
+      PLAYER_FEET_HITBOX_HALF_WIDTH +
+      Math.ceil(hitboxWidth * 0.66) -
+      1;
 
     stepGame(state, emptyInputs());
     expect(human.status).toBe("alive");
 
     human.x += 1;
     stepGame(state, emptyInputs());
+    expect(human.status).toBe("trapped");
+  });
+
+  it("does not double-count overlapping blast cells", () => {
+    const state = createOpenGame();
+    const human = state.players[0]!;
+    human.x = 2 * TILE_UNITS;
+    const duplicateCell = { col: 2, row: 1 };
+    state.blasts.push(
+      {
+        id: 70,
+        balloonId: 71,
+        ownerId: 2,
+        cells: [duplicateCell],
+        createdTick: 0,
+        expireTick: 20,
+      },
+      {
+        id: 72,
+        balloonId: 73,
+        ownerId: 2,
+        cells: [duplicateCell],
+        createdTick: 0,
+        expireTick: 20,
+      },
+    );
+
+    stepGame(state, emptyInputs());
+
+    expect(human.status).toBe("alive");
+  });
+
+  it("combines coverage from unique active blast cells", () => {
+    const state = createOpenGame();
+    const human = state.players[0]!;
+    human.x = 2 * TILE_UNITS;
+    human.y = 2 * TILE_UNITS;
+    state.blasts.push({
+      id: 70,
+      balloonId: 71,
+      ownerId: 2,
+      cells: [
+        { col: 1, row: 1 },
+        { col: 2, row: 1 },
+        { col: 1, row: 2 },
+      ],
+      createdTick: 0,
+      expireTick: 20,
+    });
+
+    stepGame(state, emptyInputs());
+
     expect(human.status).toBe("trapped");
   });
 

@@ -1,12 +1,13 @@
-import {
-  ANALOG_INPUT_SCALE,
-  type AnalogMove,
-  type Direction,
-} from "@bubble-battle/game-core";
+import type { Direction } from "@bubble-battle/game-core";
 
 export interface JoystickVector {
   x: number;
   y: number;
+}
+
+export interface JoystickCardinalStep {
+  direction: Direction | null;
+  remainder: number;
 }
 
 export const JOYSTICK_ACTIVATION_THRESHOLD = 0.14;
@@ -67,19 +68,51 @@ export function resolveJoystickDirection(
     : previous;
 }
 
-export function resolveJoystickAnalogMove(
+function directionMagnitude(
   vector: JoystickVector,
   direction: Direction | null,
-): AnalogMove | null {
+): number {
   if (direction === null) {
-    return null;
+    return 0;
+  }
+  return isHorizontal(direction)
+    ? Math.abs(vector.x)
+    : Math.abs(vector.y);
+}
+
+export function resolveJoystickCardinalStep(
+  vector: JoystickVector,
+  primary: Direction | null,
+  fallback: Direction | null,
+  previousRemainder: number,
+): JoystickCardinalStep {
+  if (primary === null) {
+    return { direction: null, remainder: 0 };
+  }
+  if (fallback === null) {
+    return { direction: primary, remainder: 0 };
   }
 
-  const angle = Math.atan2(vector.y, vector.x);
-  return {
-    x: Math.round(Math.cos(angle) * ANALOG_INPUT_SCALE),
-    y: Math.round(Math.sin(angle) * ANALOG_INPUT_SCALE),
-  };
+  const primaryMagnitude = directionMagnitude(vector, primary);
+  const fallbackMagnitude = directionMagnitude(vector, fallback);
+  const totalMagnitude = primaryMagnitude + fallbackMagnitude;
+  if (totalMagnitude === 0) {
+    return { direction: primary, remainder: 0 };
+  }
+
+  const safeRemainder = Number.isFinite(previousRemainder)
+    ? Math.max(0, Math.min(previousRemainder, 1))
+    : 0;
+  const nextRemainder =
+    safeRemainder + fallbackMagnitude / totalMagnitude;
+  if (nextRemainder >= 1) {
+    return {
+      direction: fallback,
+      remainder: nextRemainder - 1,
+    };
+  }
+
+  return { direction: primary, remainder: nextRemainder };
 }
 
 export function resolveJoystickFallbackDirection(

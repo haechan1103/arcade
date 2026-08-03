@@ -1,12 +1,12 @@
 import type {
-  AnalogMove,
   Direction,
   PlayerInput,
 } from "@bubble-battle/game-core";
 import {
-  resolveJoystickAnalogMove,
+  resolveJoystickCardinalStep,
   resolveJoystickDirection,
   resolveJoystickFallbackDirection,
+  type JoystickVector,
 } from "./JoystickMath";
 
 type TouchAction = "balloon" | "needle" | "pause" | "mute";
@@ -34,7 +34,8 @@ export class TouchController {
   private joystickGesture: JoystickGesture | null = null;
   private joystickDirection: Direction | null = null;
   private joystickFallbackDirection: Direction | null = null;
-  private joystickAnalogMove: AnalogMove | null = null;
+  private joystickVector: JoystickVector | null = null;
+  private joystickStepRemainder = 0;
   private balloonQueued = false;
   private needleQueued = false;
   private pauseQueued = false;
@@ -119,9 +120,15 @@ export class TouchController {
   }
 
   readInput(): PlayerInput {
+    const joystickStep = resolveJoystickCardinalStep(
+      this.joystickVector ?? { x: 0, y: 0 },
+      this.joystickDirection,
+      this.joystickFallbackDirection,
+      this.joystickStepRemainder,
+    );
+    this.joystickStepRemainder = joystickStep.remainder;
     const input: PlayerInput = {
-      move: this.joystickDirection,
-      analogMove: this.joystickAnalogMove,
+      move: joystickStep.direction,
       placeBalloon: this.balloonQueued,
       useNeedle: this.needleQueued,
     };
@@ -251,11 +258,10 @@ export class TouchController {
       x: deltaX / maxDistance,
       y: deltaY / maxDistance,
     };
+    const previousDirection = this.joystickDirection;
+    const previousFallbackDirection =
+      this.joystickFallbackDirection;
     this.joystickDirection = resolveJoystickDirection(
-      vector,
-      this.joystickDirection,
-    );
-    this.joystickAnalogMove = resolveJoystickAnalogMove(
       vector,
       this.joystickDirection,
     );
@@ -264,6 +270,13 @@ export class TouchController {
         vector,
         this.joystickDirection,
       );
+    this.joystickVector = vector;
+    if (
+      previousDirection !== this.joystickDirection ||
+      previousFallbackDirection !== this.joystickFallbackDirection
+    ) {
+      this.joystickStepRemainder = 0;
+    }
     this.joystick.dataset.direction =
       this.joystickDirection ?? "idle";
     this.joystick.dataset.fallbackDirection =
@@ -288,7 +301,8 @@ export class TouchController {
     this.joystickGesture = null;
     this.joystickDirection = null;
     this.joystickFallbackDirection = null;
-    this.joystickAnalogMove = null;
+    this.joystickVector = null;
+    this.joystickStepRemainder = 0;
     this.joystick?.classList.remove("is-active");
     if (this.joystick !== null) {
       this.joystick.dataset.direction = "idle";

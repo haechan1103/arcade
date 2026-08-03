@@ -82,7 +82,6 @@ export class BattleScene extends Phaser.Scene {
       seed,
       ...(this.mapId === undefined ? {} : { mapId: this.mapId }),
       playerNames: ["플레이어", this.botName()],
-      initialSpeedLevel: IS_COMPACT_LAYOUT ? 1 : 0,
     });
     this.registry.set("debug:state", this.state);
     this.bot = new BotController(2, this.difficulty, seed);
@@ -194,8 +193,6 @@ export class BattleScene extends Phaser.Scene {
     const touch = this.touchControls.readInput();
     return {
       move: touch.move ?? keyboard.move,
-      analogMove:
-        touch.move === null ? null : (touch.analogMove ?? null),
       placeBalloon:
         touch.placeBalloon || keyboard.placeBalloon,
       useNeedle: touch.useNeedle || keyboard.useNeedle,

@@ -9,7 +9,7 @@ interface DebugPlayer {
   x: number;
   y: number;
   status: string;
-  speedLevel: number;
+  speedStat: number;
 }
 
 interface DebugState {
@@ -336,7 +336,7 @@ test.describe("mobile touch controls", () => {
     const humanBefore = (await state(page)).players.find(
       (player) => player.id === 1,
     );
-    expect(humanBefore?.speedLevel).toBe(1);
+    expect(humanBefore?.speedStat).toBe(5);
 
     const joystick = page.locator("[data-joystick]");
     await expect(joystick).toBeVisible();

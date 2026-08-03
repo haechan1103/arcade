@@ -1,6 +1,8 @@
 import {
+  DEFAULT_SPEED_STAT,
   HALF_TILE,
-  MAX_SPEED_LEVEL,
+  MAX_SPEED_STAT,
+  MIN_SPEED_STAT,
   TILE_UNITS,
 } from "./config";
 import { nextRandom, normalizeSeed } from "./rng";
@@ -166,7 +168,7 @@ function toPlayer(
   name: string,
   team: number,
   spawn: Cell,
-  speedLevel: number,
+  speedStat: number,
 ): PlayerState {
   return {
     id,
@@ -179,7 +181,7 @@ function toPlayer(
     balloonCapacity: 1,
     activeBalloons: 0,
     blastRange: 1,
-    speedLevel,
+    speedStat,
     needles: 0,
     trappedUntilTick: -1,
     invulnerableUntilTick: -1,
@@ -253,13 +255,14 @@ export function createGameState(options: NewGameOptions): GameState {
   }
 
   const names = options.playerNames ?? ["플레이어", "버블봇"];
-  const requestedSpeedLevel = options.initialSpeedLevel ?? 0;
-  const initialSpeedLevel = Number.isFinite(requestedSpeedLevel)
+  const requestedSpeedStat =
+    options.initialSpeedStat ?? DEFAULT_SPEED_STAT;
+  const initialSpeedStat = Number.isFinite(requestedSpeedStat)
     ? Math.min(
-        MAX_SPEED_LEVEL,
-        Math.max(0, Math.trunc(requestedSpeedLevel)),
+        MAX_SPEED_STAT,
+        Math.max(MIN_SPEED_STAT, Math.trunc(requestedSpeedStat)),
       )
-    : 0;
+    : DEFAULT_SPEED_STAT;
 
   return {
     version: 1,
@@ -279,14 +282,14 @@ export function createGameState(options: NewGameOptions): GameState {
         names[0],
         1,
         playerOneSpawn,
-        initialSpeedLevel,
+        initialSpeedStat,
       ),
       toPlayer(
         2,
         names[1],
         2,
         playerTwoSpawn,
-        initialSpeedLevel,
+        initialSpeedStat,
       ),
     ],
     balloons: [],
