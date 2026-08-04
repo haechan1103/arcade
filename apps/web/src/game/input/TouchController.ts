@@ -127,8 +127,15 @@ export class TouchController {
       this.joystickStepRemainder,
     );
     this.joystickStepRemainder = joystickStep.remainder;
+    const fallbackMove =
+      joystickStep.direction === null
+        ? null
+        : joystickStep.direction === this.joystickDirection
+          ? this.joystickFallbackDirection
+          : this.joystickDirection;
     const input: PlayerInput = {
       move: joystickStep.direction,
+      fallbackMove,
       placeBalloon: this.balloonQueued,
       useNeedle: this.needleQueued,
     };

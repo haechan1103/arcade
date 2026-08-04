@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   PLAYER_BODY_HALF,
   TILE_UNITS,
+  speedUnitsPerTick,
 } from "@bubble-battle/game-core";
 
 interface DebugPlayer {
@@ -440,9 +441,15 @@ test.describe("mobile touch controls", () => {
         }
         human.x = 2 * tileUnits - bodyHalf;
         human.y = tileUnits + tileUnits / 2;
-        const wall = debugState.tiles[debugState.width + 2];
-        if (wall !== undefined) {
-          wall.kind = "hard";
+        for (let row = 1; row <= 3; row += 1) {
+          const floor = debugState.tiles[row * debugState.width + 1];
+          const wall = debugState.tiles[row * debugState.width + 2];
+          if (floor !== undefined) {
+            floor.kind = "floor";
+          }
+          if (wall !== undefined) {
+            wall.kind = "hard";
+          }
         }
       },
       { tileUnits: TILE_UNITS, bodyHalf: PLAYER_BODY_HALF },
@@ -469,15 +476,20 @@ test.describe("mobile touch controls", () => {
       "data-fallback-direction",
       "down",
     );
-    await expect
-      .poll(
-        async () =>
-          (await state(page)).players.find(
-            (player) => player.id === 1,
-          )?.y ?? 0,
-        { timeout: 1_000, intervals: [25] },
-      )
-      .toBeGreaterThan(wallSlideStart?.y ?? 0);
+    const wallSlideStartTick = (await state(page)).tick;
+    await page.waitForTimeout(260);
+    const wallSlideMovingState = await state(page);
+    const wallSlideMoving = wallSlideMovingState.players.find(
+      (player) => player.id === 1,
+    );
+    const wallSlideTicks =
+      wallSlideMovingState.tick - wallSlideStartTick;
+    expect(wallSlideTicks).toBeGreaterThan(2);
+    expect(
+      (wallSlideMoving?.y ?? 0) - (wallSlideStart?.y ?? 0),
+    ).toBeGreaterThanOrEqual(
+      Math.max(1, wallSlideTicks - 1) * speedUnitsPerTick(5),
+    );
     await joystick.dispatchEvent("pointerup", {
       pointerId: 12,
       pointerType: "touch",

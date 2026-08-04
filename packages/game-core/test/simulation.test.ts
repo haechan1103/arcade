@@ -204,6 +204,37 @@ describe("movement", () => {
     expect(human.direction).toBe("up");
   });
 
+  it("uses the open joystick axis in the same tick at a wall", () => {
+    const map = mapFromAscii("wall-fallback", "Wall Fallback", [
+      "#######",
+      "#....2#",
+      "#1#...#",
+      "#.....#",
+      "#######",
+    ]);
+    const state = createGameState({ seed: 28, map });
+    const human = state.players[0]!;
+    human.x = 2 * TILE_UNITS - PLAYER_BODY_HALF;
+    const startX = human.x;
+    const startY = human.y;
+
+    stepGame(state, {
+      1: {
+        move: "right",
+        fallbackMove: "up",
+        placeBalloon: false,
+        useNeedle: false,
+      },
+      2: noInput(),
+    });
+
+    expect(human.x).toBe(startX);
+    expect(startY - human.y).toBe(
+      speedUnitsPerTick(DEFAULT_SPEED_STAT),
+    );
+    expect(human.direction).toBe("up");
+  });
+
   it("preserves sub-tile offsets without automatic centering", () => {
     const state = createOpenGame();
     const human = state.players[0]!;

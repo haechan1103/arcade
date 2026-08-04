@@ -244,7 +244,8 @@ function movePlayerInDirection(
   state: GameState,
   player: PlayerState,
   direction: Direction,
-): void {
+  allowTurnAssist: boolean,
+): number {
   player.direction = direction;
   const baseSpeed = playerSpeed(player);
   const vector = DIRECTION_VECTOR[direction];
@@ -258,7 +259,11 @@ function movePlayerInDirection(
     moveDelta,
   );
   if (moved !== 0) {
-    return;
+    return Math.abs(moved);
+  }
+
+  if (!allowTurnAssist) {
+    return 0;
   }
 
   const assist = requiredTurnAssist(
@@ -268,7 +273,7 @@ function movePlayerInDirection(
     moveDelta,
   );
   if (assist === null) {
-    return;
+    return 0;
   }
 
   const assistBudget = Math.min(
@@ -282,28 +287,57 @@ function movePlayerInDirection(
     Math.sign(assist.delta) * assistBudget,
   );
   const remainingSpeed = baseSpeed - Math.abs(assisted);
+  let completed = 0;
   if (remainingSpeed > 0) {
-    moveAlongAxis(
+    completed = moveAlongAxis(
       state,
       player,
       moveAxis,
       moveSign * remainingSpeed,
     );
   }
+  return Math.abs(assisted) + Math.abs(completed);
 }
 
 function movePlayer(
   state: GameState,
   player: PlayerState,
   direction: Direction | null,
+  fallbackDirection: Direction | null,
 ): void {
   if (player.status === "dead") {
     return;
   }
 
-  if (direction !== null) {
-    movePlayerInDirection(state, player, direction);
+  if (direction === null) {
+    return;
   }
+
+  if (
+    fallbackDirection !== null &&
+    fallbackDirection !== direction
+  ) {
+    const moved = movePlayerInDirection(
+      state,
+      player,
+      direction,
+      false,
+    );
+    if (moved === 0) {
+      const fallbackMoved = movePlayerInDirection(
+        state,
+        player,
+        fallbackDirection,
+        false,
+      );
+      if (fallbackMoved === 0) {
+        movePlayerInDirection(state, player, direction, true);
+      }
+    }
+    return;
+  }
+
+  movePlayerInDirection(state, player, direction, true);
 }
 
 function placeBalloon(
@@ -940,6 +974,7 @@ export function stepGame(
       state,
       player,
       input?.move ?? null,
+      input?.fallbackMove ?? null,
     );
   }
 

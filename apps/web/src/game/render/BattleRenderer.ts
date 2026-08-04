@@ -86,9 +86,14 @@ const PICKUP_FRAME: Readonly<Record<ItemType, number>> = {
   needle: OBJECT_FRAME.needle,
 };
 
-const CHARACTER_SIZE = 82;
-const CHARACTER_FOOT_ANCHOR_OFFSET = 27;
-const CHARACTER_SHADOW_OFFSET = 6;
+// The generated frames contain generous transparent padding. These display
+// dimensions keep the visible character ink inside one 48px map tile and
+// center it on the simulation coordinate instead of anchoring its tall body
+// above the tile.
+const CHARACTER_WIDTH = 76;
+const CHARACTER_HEIGHT = 62;
+const CHARACTER_SHADOW_OFFSET = 22;
+const BLOCK_OCCLUSION_DEPTH = 5.1;
 const WALK_FRAME_MS = 125;
 const BALLOON_WARNING_TICKS = Math.round(TICK_RATE * 1.25);
 
@@ -628,7 +633,7 @@ export class BattleRenderer {
         {
           width: TILE_SIZE + 8,
           height: TILE_SIZE + 8,
-          depth: 2,
+          depth: BLOCK_OCCLUSION_DEPTH,
         },
       ) !== null
     ) {
@@ -658,7 +663,7 @@ export class BattleRenderer {
         {
           width: TILE_SIZE + 8,
           height: TILE_SIZE + 8,
-          depth: 2.1,
+          depth: BLOCK_OCCLUSION_DEPTH,
         },
       ) !== null
     ) {
@@ -1214,10 +1219,10 @@ export class BattleRenderer {
       CHARACTER_SHEET,
       frame,
       x,
-      y - CHARACTER_FOOT_ANCHOR_OFFSET + bob + footfallOffset,
+      y + bob + footfallOffset,
       {
-        width: CHARACTER_SIZE,
-        height: CHARACTER_SIZE,
+        width: CHARACTER_WIDTH,
+        height: CHARACTER_HEIGHT,
         depth: 5,
         angle: isMoving ? (secondFootfall ? -1.1 : 1.1) : 0,
         flipX: player.direction === "left",
@@ -1238,10 +1243,10 @@ export class BattleRenderer {
         OBJECT_SHEET,
         OBJECT_FRAME.trappedBubble,
         x,
-        y - CHARACTER_FOOT_ANCHOR_OFFSET,
+        y,
         {
-          width: 74 + bubblePulse,
-          height: 74 + bubblePulse,
+          width: 62 + bubblePulse,
+          height: 62 + bubblePulse,
           depth: 5.4,
           alpha: 0.9,
         },
@@ -1257,10 +1262,10 @@ export class BattleRenderer {
         OBJECT_SHEET,
         OBJECT_FRAME.sparkle,
         x,
-        y - CHARACTER_FOOT_ANCHOR_OFFSET,
+        y,
         {
-          width: 78,
-          height: 78,
+          width: 66,
+          height: 66,
           depth: 5.5,
           alpha: 0.52,
           angle: (elapsedMs * 0.04) % 360,
