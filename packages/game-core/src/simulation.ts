@@ -14,6 +14,7 @@ import {
   TILE_UNITS,
   TRAPPED_DURATION_TICKS,
   TRAPPED_SPEED_UNITS_PER_TICK,
+  TURN_ASSIST_MAX_OFFSET,
   speedUnitsPerTick,
 } from "./config";
 import {
@@ -111,9 +112,9 @@ function moveAlongAxis(
   player: PlayerState,
   axis: "x" | "y",
   delta: number,
-): void {
+): number {
   if (delta === 0) {
-    return;
+    return 0;
   }
 
   const start = player[axis];
@@ -123,7 +124,7 @@ function moveAlongAxis(
 
   if (!positionIsBlocked(state, player.id, targetX, targetY)) {
     player[axis] = target;
-    return;
+    return delta;
   }
 
   const sign = Math.sign(delta);
@@ -144,6 +145,93 @@ function moveAlongAxis(
   }
 
   player[axis] = start + sign * low;
+  return player[axis] - start;
+}
+
+function nearestTileCenter(value: number): number {
+  return (
+    Math.round((value - TILE_UNITS / 2) / TILE_UNITS) * TILE_UNITS +
+    TILE_UNITS / 2
+  );
+}
+
+function canCompleteTurnFromOffset(
+  state: GameState,
+  player: PlayerState,
+  moveAxis: "x" | "y",
+  moveDelta: number,
+  assistAxis: "x" | "y",
+  assistDelta: number,
+): boolean {
+  const assistedX =
+    assistAxis === "x" ? player.x + assistDelta : player.x;
+  const assistedY =
+    assistAxis === "y" ? player.y + assistDelta : player.y;
+  const targetX =
+    moveAxis === "x" ? assistedX + moveDelta : assistedX;
+  const targetY =
+    moveAxis === "y" ? assistedY + moveDelta : assistedY;
+
+  return (
+    !positionIsBlocked(
+      state,
+      player.id,
+      assistedX,
+      assistedY,
+    ) &&
+    !positionIsBlocked(state, player.id, targetX, targetY)
+  );
+}
+
+function requiredTurnAssist(
+  state: GameState,
+  player: PlayerState,
+  moveAxis: "x" | "y",
+  moveDelta: number,
+): { axis: "x" | "y"; delta: number } | null {
+  const assistAxis = moveAxis === "x" ? "y" : "x";
+  const center = nearestTileCenter(player[assistAxis]);
+  const offset = center - player[assistAxis];
+  const distance = Math.abs(offset);
+  if (distance === 0 || distance > TURN_ASSIST_MAX_OFFSET) {
+    return null;
+  }
+
+  const sign = Math.sign(offset);
+  if (
+    !canCompleteTurnFromOffset(
+      state,
+      player,
+      moveAxis,
+      moveDelta,
+      assistAxis,
+      offset,
+    )
+  ) {
+    return null;
+  }
+
+  let low = 1;
+  let high = distance;
+  while (low < high) {
+    const midpoint = Math.floor((low + high) / 2);
+    if (
+      canCompleteTurnFromOffset(
+        state,
+        player,
+        moveAxis,
+        moveDelta,
+        assistAxis,
+        sign * midpoint,
+      )
+    ) {
+      high = midpoint;
+    } else {
+      low = midpoint + 1;
+    }
+  }
+
+  return { axis: assistAxis, delta: sign * low };
 }
 
 function playerSpeed(player: PlayerState): number {
@@ -160,12 +248,48 @@ function movePlayerInDirection(
   player.direction = direction;
   const baseSpeed = playerSpeed(player);
   const vector = DIRECTION_VECTOR[direction];
-
-  if (vector.col !== 0) {
-    moveAlongAxis(state, player, "x", vector.col * baseSpeed);
+  const moveAxis = vector.col !== 0 ? "x" : "y";
+  const moveSign = vector.col !== 0 ? vector.col : vector.row;
+  const moveDelta = moveSign * baseSpeed;
+  const moved = moveAlongAxis(
+    state,
+    player,
+    moveAxis,
+    moveDelta,
+  );
+  if (moved !== 0) {
     return;
   }
-  moveAlongAxis(state, player, "y", vector.row * baseSpeed);
+
+  const assist = requiredTurnAssist(
+    state,
+    player,
+    moveAxis,
+    moveDelta,
+  );
+  if (assist === null) {
+    return;
+  }
+
+  const assistBudget = Math.min(
+    Math.abs(assist.delta),
+    baseSpeed,
+  );
+  const assisted = moveAlongAxis(
+    state,
+    player,
+    assist.axis,
+    Math.sign(assist.delta) * assistBudget,
+  );
+  const remainingSpeed = baseSpeed - Math.abs(assisted);
+  if (remainingSpeed > 0) {
+    moveAlongAxis(
+      state,
+      player,
+      moveAxis,
+      moveSign * remainingSpeed,
+    );
+  }
 }
 
 function movePlayer(

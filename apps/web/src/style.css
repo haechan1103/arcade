@@ -387,15 +387,16 @@ body::before {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  padding-top: 42px;
 }
 
 .touch-utilities {
   position: absolute;
   top: 0;
-  right: 0;
+  right: 8px;
+  z-index: 25;
   display: flex;
   gap: 8px;
+  pointer-events: auto;
 }
 
 .touch-small {
@@ -547,6 +548,7 @@ kbd {
   }
 
   .touch-controls.is-active {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
@@ -619,6 +621,12 @@ kbd {
     pointer-events: none;
   }
 
+  .touch-utilities {
+    position: fixed;
+    top: max(10px, env(safe-area-inset-top));
+    right: max(62px, calc(env(safe-area-inset-right) + 58px));
+  }
+
   .touch-joystick,
   .touch-actions {
     pointer-events: auto;
@@ -644,6 +652,10 @@ kbd {
 @media (display-mode: standalone), (display-mode: fullscreen) {
   .mobile-fullscreen {
     display: none;
+  }
+
+  .touch-utilities {
+    right: max(10px, env(safe-area-inset-right));
   }
 }
 

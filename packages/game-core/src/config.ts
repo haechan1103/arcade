@@ -4,6 +4,9 @@ export const TICK_MS = 1000 / TICK_RATE;
 export const TILE_UNITS = 1024;
 export const HALF_TILE = TILE_UNITS / 2;
 export const PLAYER_BODY_HALF = 282;
+// Input forgiveness used only when a requested turn is blocked at an open
+// corner. Free movement is never pulled toward the middle of a tile.
+export const TURN_ASSIST_MAX_OFFSET = Math.floor(TILE_UNITS / 3);
 // The official rule uses a short, wide collision zone at the player's
 // feet and traps at 66% coverage. Nexon does not publish its dimensions,
 // so only these dimensions are calibrated from the official diagram.

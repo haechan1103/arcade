@@ -326,7 +326,9 @@ test.describe("mobile touch controls", () => {
     await clickGamePoint(page, 550, 383);
 
     const touchControls = page.locator("[data-touch-controls]");
+    const utilities = page.locator(".touch-utilities");
     await expect(touchControls).toBeVisible();
+    await expect(utilities).toBeVisible();
     await expect
       .poll(async () => (await state(page)).tick, {
         timeout: 6_000,
@@ -344,6 +346,12 @@ test.describe("mobile touch controls", () => {
     if (joystickBox === null) {
       throw new Error("Mobile joystick is not visible.");
     }
+    const utilitiesBox = await utilities.boundingBox();
+    expect(utilitiesBox).not.toBeNull();
+    expect(utilitiesBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(24);
+    expect(
+      (utilitiesBox?.x ?? 0) + (utilitiesBox?.width ?? 0),
+    ).toBeGreaterThan(690);
     await joystick.dispatchEvent("pointerdown", {
       pointerId: 11,
       pointerType: "touch",
@@ -544,17 +552,29 @@ test.describe("mobile portrait layout", () => {
     await clickGamePoint(page, 550, 383);
 
     const touchControls = page.locator("[data-touch-controls]");
+    const utilities = page.locator(".touch-utilities");
     const balloonButton = page.locator(
       '[data-control="balloon"]',
     );
     await expect(touchControls).toBeVisible();
+    await expect(utilities).toBeVisible();
     await expect(balloonButton).toBeVisible();
 
     const controlsBox = await touchControls.boundingBox();
+    const utilitiesBox = await utilities.boundingBox();
+    const balloonBox = await balloonButton.boundingBox();
     const canvas = page.locator("#game-container canvas");
     await expect(canvas).toHaveAttribute("width", "800");
     await expect(canvas).toHaveAttribute("height", "680");
     expect(controlsBox).not.toBeNull();
+    expect(utilitiesBox).not.toBeNull();
+    expect(balloonBox).not.toBeNull();
+    expect(utilitiesBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      balloonBox?.y ?? 0,
+    );
+    expect(
+      (utilitiesBox?.x ?? 0) + (utilitiesBox?.width ?? 0),
+    ).toBeGreaterThan(370);
     expect(
       (controlsBox?.y ?? 0) + (controlsBox?.height ?? 0),
     ).toBeLessThanOrEqual(844);

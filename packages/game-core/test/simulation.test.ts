@@ -225,6 +225,65 @@ describe("movement", () => {
     );
     expect(human.y).toBe(startY);
   });
+
+  it("rounds a nearby open corner within the movement budget", () => {
+    const map = mapFromAscii("corner-turn", "Corner Turn", [
+      "#######",
+      "#....2#",
+      "#1#...#",
+      "#.....#",
+      "#######",
+    ]);
+    const state = createGameState({ seed: 26, map });
+    const human = state.players[0]!;
+    human.x = 2 * TILE_UNITS - PLAYER_BODY_HALF;
+    human.y = TILE_UNITS + HALF_TILE + 300;
+    const startX = human.x;
+    const startY = human.y;
+
+    stepGame(state, {
+      1: {
+        move: "right",
+        placeBalloon: false,
+        useNeedle: false,
+      },
+      2: noInput(),
+    });
+
+    expect(human.x).toBeGreaterThan(startX);
+    expect(human.y).toBeLessThan(startY);
+    expect(human.x - startX + startY - human.y).toBe(
+      speedUnitsPerTick(DEFAULT_SPEED_STAT),
+    );
+  });
+
+  it("does not drift sideways when the requested wall stays closed", () => {
+    const map = mapFromAscii("closed-turn", "Closed Turn", [
+      "#######",
+      "#....2#",
+      "#1#...#",
+      "#.....#",
+      "#######",
+    ]);
+    const state = createGameState({ seed: 27, map });
+    const human = state.players[0]!;
+    human.x = 2 * TILE_UNITS - PLAYER_BODY_HALF;
+    human.y += 180;
+    const startX = human.x;
+    const startY = human.y;
+
+    stepGame(state, {
+      1: {
+        move: "right",
+        placeBalloon: false,
+        useNeedle: false,
+      },
+      2: noInput(),
+    });
+
+    expect(human.x).toBe(startX);
+    expect(human.y).toBe(startY);
+  });
 });
 
 describe("balloons and blasts", () => {

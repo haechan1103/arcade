@@ -87,7 +87,8 @@ const PICKUP_FRAME: Readonly<Record<ItemType, number>> = {
 };
 
 const CHARACTER_SIZE = 82;
-const CHARACTER_FOOT_ANCHOR_OFFSET = 31;
+const CHARACTER_FOOT_ANCHOR_OFFSET = 27;
+const CHARACTER_SHADOW_OFFSET = 6;
 const WALK_FRAME_MS = 125;
 const BALLOON_WARNING_TICKS = Math.round(TICK_RATE * 1.25);
 
@@ -1181,7 +1182,7 @@ export class BattleRenderer {
         OBJECT_SHEET,
         OBJECT_FRAME.shadow,
         x,
-        y + 2,
+        y + CHARACTER_SHADOW_OFFSET,
         {
           width: 40,
           height: 14,
