@@ -35,7 +35,12 @@ npm run test:e2e
 ## 구조
 
 - `packages/game-core`: 30Hz 결정론적 게임 판정과 AI
-- `apps/web`: Phaser 렌더링, 키보드·모바일 터치 입력, 메뉴, 사운드
+- `apps/web/src/game`: Phaser 기반 게임 흐름, 월드 렌더링, 키보드·터치 입력, 사운드
+- `apps/web/src/ui`: Phaser 비종속 UI 상태, 사용자 액션 포트, HTML 표현 모델과 DOM 뷰
+- `apps/web/index.html`, `style.css`: 메뉴, HUD, 오버레이, 승패 모달의 시맨틱 마크업과 반응형 표현
 - `e2e`: 실제 Chrome에서 메뉴·이동·물풍선·일시정지를 검증하는 테스트
 
 게임 규칙이 브라우저와 분리되어 있으므로 이후 권위형 서버에서도 같은 코어를 재사용할 수 있습니다.
+게임 Scene은 `GameUiStore`에 직렬화 가능한 표현 상태만 전달하고, DOM 버튼은
+`GameUiActions`를 통해 의도만 전달합니다. 따라서 DOM이 시뮬레이션 상태를 직접
+변경하거나 Phaser 렌더러가 HTML 요소에 의존하지 않습니다.

@@ -9,6 +9,8 @@ import {
   IS_COMPACT_LAYOUT,
   isPortraitLayout,
 } from "./game/layout";
+import { GameUiView } from "./ui/GameUiView";
+import { gameUiActions, gameUiStore } from "./ui/gameUi";
 import "./style.css";
 
 document.documentElement.dataset.gameLayout = IS_COMPACT_LAYOUT
@@ -16,6 +18,16 @@ document.documentElement.dataset.gameLayout = IS_COMPACT_LAYOUT
   : "standard";
 setupMobileFullscreen();
 setupMobileInteractionGuards();
+
+const gameUiRoot = document.querySelector<HTMLElement>("[data-game-ui]");
+if (gameUiRoot === null) {
+  throw new Error("Game UI root is missing.");
+}
+const gameUiView = new GameUiView(
+  gameUiRoot,
+  gameUiStore,
+  gameUiActions,
+);
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -41,6 +53,10 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
+window.addEventListener("pagehide", () => gameUiView.destroy(), {
+  once: true,
+});
+
 function getBattleUiState(): unknown {
   const battleScene = game.scene.getScene(
     "BattleScene",
@@ -50,7 +66,13 @@ function getBattleUiState(): unknown {
 
 window.__BUBBLE_BATTLE__ = {
   game,
-  getState: () => game.registry.get("debug:state") as unknown,
+  getState: () =>
+    (game.registry.get("debug:state") as unknown) ?? {
+      tick: 0,
+      phase: "starting",
+      players: [],
+      balloons: [],
+    },
   getUiState: getBattleUiState,
   layout: {
     width: GAME_WIDTH,

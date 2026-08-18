@@ -77,21 +77,11 @@ async function forceHumanDefeat(page: Page): Promise<void> {
     .toBe(true);
 }
 
-async function clickGamePoint(
+async function startBattle(
   page: Page,
-  x: number,
-  y: number,
+  difficulty: "easy" | "normal" | "hard" = "normal",
 ): Promise<void> {
-  const canvas = page.locator("#game-container canvas");
-  const box = await canvas.boundingBox();
-  if (box === null) {
-    throw new Error("Game canvas is not visible.");
-  }
-
-  await page.mouse.click(
-    box.x + (x / 1100) * box.width,
-    box.y + (y / 720) * box.height,
-  );
+  await page.locator(`[data-difficulty="${difficulty}"]`).click();
 }
 
 test("menu starts a playable local match", async ({ page }) => {
@@ -128,7 +118,7 @@ test("menu starts a playable local match", async ({ page }) => {
     fullPage: true,
   });
 
-  await clickGamePoint(page, 550, 383);
+  await startBattle(page);
   await expect
     .poll(async () => (await state(page)).tick, { timeout: 6_000 })
     .toBeGreaterThan(2);
@@ -243,7 +233,7 @@ test("escape pauses and resumes the fixed-tick simulation", async ({
   page,
 }) => {
   await page.goto("/");
-  await clickGamePoint(page, 550, 383);
+  await startBattle(page);
   await expect
     .poll(async () => (await state(page)).tick, { timeout: 6_000 })
     .toBeGreaterThan(2);
@@ -267,14 +257,22 @@ test("retry resets countdown and can show a second result", async ({
   page,
 }) => {
   await page.goto("/");
-  await clickGamePoint(page, 550, 383);
+  await startBattle(page);
   await expect
     .poll(async () => (await state(page)).tick, { timeout: 6_000 })
     .toBeGreaterThan(2);
 
   await forceHumanDefeat(page);
+  await expect(page.locator("[data-ui-result]")).toBeVisible();
+  await expect(page.locator("[data-ui-result-title]")).toHaveText(
+    "YOU LOSE",
+  );
+  await page.screenshot({
+    path: "test-results/result-lose.png",
+    fullPage: true,
+  });
   const firstSeed = (await state(page)).seed;
-  await clickGamePoint(page, 286, 460);
+  await page.locator("[data-ui-retry]").click();
 
   await expect
     .poll(async () => (await state(page)).seed)
@@ -324,7 +322,7 @@ test.describe("mobile touch controls", () => {
     await expect(
       page.locator("[data-fullscreen-toggle]"),
     ).toBeVisible();
-    await clickGamePoint(page, 550, 383);
+    await startBattle(page);
 
     const touchControls = page.locator("[data-touch-controls]");
     const utilities = page.locator(".touch-utilities");
@@ -477,7 +475,7 @@ test.describe("mobile touch controls", () => {
       "down",
     );
     const wallSlideStartTick = (await state(page)).tick;
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(340);
     const wallSlideMovingState = await state(page);
     const wallSlideMoving = wallSlideMovingState.players.find(
       (player) => player.id === 1,
@@ -561,7 +559,7 @@ test.describe("mobile portrait layout", () => {
     await expect(
       page.locator("[data-fullscreen-toggle]"),
     ).toBeVisible();
-    await clickGamePoint(page, 550, 383);
+    await startBattle(page);
 
     const touchControls = page.locator("[data-touch-controls]");
     const utilities = page.locator(".touch-utilities");

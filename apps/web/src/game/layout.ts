@@ -6,9 +6,14 @@ const hasCompactPointer =
     Math.min(window.screen.width, window.screen.height) <= 1_024);
 
 export const IS_COMPACT_LAYOUT = hasCompactPointer;
-export const UI_TEXT_RESOLUTION = IS_COMPACT_LAYOUT
-  ? 2
-  : Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+// Phaser renders every Text object to an intermediate canvas. Matching only
+// the device pixel ratio still leaves small HUD copy visibly soft after the
+// game canvas is scaled by FIT, so UI text gets a little extra raster density.
+// This does not increase the resolution (or cost) of the whole game canvas.
+export const UI_TEXT_RESOLUTION = Math.min(
+  4,
+  Math.max(3, (window.devicePixelRatio || 1) * 2),
+);
 export const GAME_WIDTH = IS_COMPACT_LAYOUT ? 800 : 1100;
 export const GAME_HEIGHT = IS_COMPACT_LAYOUT ? 680 : 720;
 export const BOARD_X = IS_COMPACT_LAYOUT ? 40 : 34;

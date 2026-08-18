@@ -4,6 +4,7 @@ import {
   createGameState,
   noInput,
   stepGame,
+  type AiDebugInfo,
   type Difficulty,
   type GameState,
   type InputByPlayer,
@@ -14,19 +15,10 @@ import { preloadGeneratedAssets } from "../assets";
 import { soundFx } from "../audio/SoundFx";
 import { KeyboardController } from "../input/KeyboardController";
 import { TouchController } from "../input/TouchController";
-import {
-  BOARD_HEIGHT,
-  BOARD_WIDTH,
-  BOARD_X,
-  BOARD_Y,
-  GAME_HEIGHT,
-  GAME_WIDTH,
-  IS_COMPACT_LAYOUT,
-  UI_FONT,
-  UI_TEXT_RESOLUTION,
-} from "../layout";
+import { IS_COMPACT_LAYOUT } from "../layout";
 import { BattleRenderer } from "../render/BattleRenderer";
-import { createButton } from "../ui/createButton";
+import { gameUiActions, gameUiStore } from "../../ui/gameUi";
+import { presentBattleUi } from "../../ui/presentBattleUi";
 
 interface BattleSceneData {
   difficulty?: Difficulty;
@@ -57,6 +49,8 @@ export class BattleScene extends Phaser.Scene {
   private countdownMs = 3200;
   private paused = false;
   private resultVisible = false;
+  private lastUiSignature = "";
+  private toastId = 0;
 
   constructor() {
     super("BattleScene");
@@ -76,6 +70,7 @@ export class BattleScene extends Phaser.Scene {
     this.countdownMs = 3200;
     this.paused = false;
     this.resultVisible = false;
+    this.lastUiSignature = "";
 
     const seed = (Date.now() ^ 0xa53c9e17) >>> 0;
     this.state = createGameState({
@@ -94,13 +89,27 @@ export class BattleScene extends Phaser.Scene {
         { x: player.x, y: player.y },
       ]),
     );
-    this.battleRenderer.setOverlay(
-      "countdown",
-      "3",
-      this.countdownMessage(3),
-    );
+    gameUiStore.patch({
+      screen: "battle",
+      difficulty: this.difficulty,
+      result: null,
+      toast: null,
+    });
+
+    const stopUiActions = gameUiActions.subscribe((action) => {
+      if (action.type === "retry") {
+        soundFx.unlock();
+        this.scene.restart({
+          difficulty: this.difficulty,
+          mapId: this.mapId,
+        });
+      } else if (action.type === "open-menu") {
+        this.scene.start("MenuScene");
+      }
+    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      stopUiActions();
       this.touchControls.destroy();
       this.battleRenderer.destroy();
     });
@@ -133,15 +142,6 @@ export class BattleScene extends Phaser.Scene {
       this.countdownMs <= 0
     ) {
       this.paused = !this.paused;
-      this.battleRenderer.setOverlay(
-        this.paused ? "pause" : "none",
-        this.paused ? "PAUSED" : "",
-        this.paused
-          ? IS_COMPACT_LAYOUT
-            ? "일시정지 버튼으로 계속하기"
-            : "ESC를 눌러 계속하기"
-          : "",
-      );
     }
 
     if (this.countdownMs > 0) {
@@ -179,13 +179,14 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.battleRenderer.updateParticles(safeDelta / 1000);
+    const botDebug = this.bot.getDebugInfo();
     this.battleRenderer.render(
       this.state,
       this.previousPositions,
       Math.min(1, this.accumulator / TICK_MS),
       time,
-      this.bot.getDebugInfo(),
     );
+    this.syncUi(botDebug);
   }
 
   private readHumanInput(): PlayerInput {
@@ -202,29 +203,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateCountdown(delta: number): void {
+    const wasCountingDown = this.countdownMs > 0;
     this.countdownMs = Math.max(0, this.countdownMs - delta);
-    if (this.countdownMs > 2400) {
-      this.battleRenderer.setOverlay(
-        "countdown",
-        "3",
-        this.countdownMessage(3),
-      );
-    } else if (this.countdownMs > 1600) {
-      this.battleRenderer.setOverlay(
-        "countdown",
-        "2",
-        this.countdownMessage(2),
-      );
-    } else if (this.countdownMs > 800) {
-      this.battleRenderer.setOverlay(
-        "countdown",
-        "1",
-        this.countdownMessage(1),
-      );
-    } else if (this.countdownMs > 0) {
-      this.battleRenderer.setOverlay("countdown", "BUBBLE!", "");
-    } else {
-      this.battleRenderer.setOverlay("none");
+    if (wasCountingDown && this.countdownMs === 0) {
       this.accumulator = 0;
     }
   }
@@ -234,154 +215,30 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     this.resultVisible = true;
-
-    const won = this.state.result?.winnerId === 1;
-    const draw = this.state.result?.winnerId === null;
-    const overlay = this.add
-      .rectangle(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2,
-        GAME_WIDTH,
-        GAME_HEIGHT,
-        0x050918,
-        0.78,
-      )
-      .setDepth(30)
-      .setInteractive();
-    const panel = this.add
-      .rectangle(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2,
-        470,
-        365,
-        0x14223d,
-        0.98,
-      )
-      .setStrokeStyle(2, won ? 0x63e8ff : 0xff789e, 0.38)
-      .setDepth(31);
-
-    const badgeColor = draw ? 0xffd66b : won ? 0x4de0ef : 0xff668f;
-    this.add
-      .circle(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2 - 112,
-        42,
-        badgeColor,
-        1,
-      )
-      .setDepth(32);
-    this.add
-      .text(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2 - 112,
-        draw ? "－" : won ? "★" : "!",
-        {
-          fontFamily: UI_FONT,
-          fontSize: "37px",
-          fontStyle: "bold",
-          color: "#102038",
-          resolution: UI_TEXT_RESOLUTION,
-        },
-      )
-      .setOrigin(0.5)
-      .setDepth(33);
-    this.add
-      .text(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2 - 42,
-        draw ? "DRAW" : won ? "YOU WIN!" : "YOU LOSE",
-        {
-          fontFamily: UI_FONT,
-          fontSize: won ? "42px" : "34px",
-          fontStyle: "bold",
-          color: "#f7fbff",
-          resolution: UI_TEXT_RESOLUTION,
-        },
-      )
-      .setOrigin(0.5)
-      .setDepth(33);
-    this.add
-      .text(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2 + 5,
-        won
-          ? "위험한 길을 읽고 상대를 먼저 가뒀습니다."
-          : draw
-            ? "같은 순간 물방울이 터졌습니다."
-            : "물방울에서 빠져나오지 못했습니다. 다시 도전하세요.",
-        {
-          fontFamily: UI_FONT,
-          fontSize: "14px",
-          color: "#a9bfdc",
-          resolution: UI_TEXT_RESOLUTION,
-        },
-      )
-      .setOrigin(0.5)
-      .setDepth(33);
-
-    createButton(
-      this,
-      BOARD_X + BOARD_WIDTH / 2 - 108,
-      BOARD_Y + BOARD_HEIGHT / 2 + 100,
-      "다시 대결",
-      () => {
-        soundFx.unlock();
-        this.scene.restart({
-          difficulty: this.difficulty,
-          mapId: this.mapId,
-        });
-      },
-      {
-        width: 195,
-        height: 58,
-        color: 0x43d1e8,
-        hoverColor: 0x68e5f7,
-        fontSize: 18,
-      },
-    ).setDepth(34);
-    createButton(
-      this,
-      BOARD_X + BOARD_WIDTH / 2 + 108,
-      BOARD_Y + BOARD_HEIGHT / 2 + 100,
-      "난이도 선택",
-      () => this.scene.start("MenuScene"),
-      {
-        width: 195,
-        height: 58,
-        color: 0x334868,
-        hoverColor: 0x456083,
-        textColor: "#edf7ff",
-        fontSize: 18,
-      },
-    ).setDepth(34);
-
-    void overlay;
-    void panel;
   }
 
   private showToast(message: string): void {
-    const toast = this.add
-      .text(GAME_WIDTH - 28, 24, message, {
-        fontFamily: UI_FONT,
-        fontSize: "13px",
-        fontStyle: "bold",
-        color: "#f5fbff",
-        backgroundColor: "#172744",
-        padding: { x: 12, y: 7 },
-        resolution: UI_TEXT_RESOLUTION,
-      })
-      .setOrigin(1, 0)
-      .setDepth(40)
-      .setAlpha(0);
-
-    this.tweens.add({
-      targets: toast,
-      alpha: 1,
-      duration: 120,
-      yoyo: true,
-      hold: 700,
-      onComplete: () => toast.destroy(),
+    this.toastId += 1;
+    gameUiStore.patch({
+      toast: { id: this.toastId, message },
     });
+  }
+
+  private syncUi(botDebug: AiDebugInfo): void {
+    const snapshot = presentBattleUi({
+      state: this.state,
+      botDebug,
+      countdownMs: this.countdownMs,
+      paused: this.paused,
+      resultVisible: this.resultVisible,
+      compact: IS_COMPACT_LAYOUT,
+    });
+    const signature = JSON.stringify(snapshot);
+    if (signature === this.lastUiSignature) {
+      return;
+    }
+    this.lastUiSignature = signature;
+    gameUiStore.patch(snapshot);
   }
 
   private botName(): string {
@@ -394,19 +251,4 @@ export class BattleScene extends Phaser.Scene {
     return "영리한 버블봇";
   }
 
-  private countdownMessage(step: 1 | 2 | 3): string {
-    if (IS_COMPACT_LAYOUT) {
-      return {
-        3: `${this.state.mapName} · 길을 먼저 확보하세요`,
-        2: "벽 뒤는 안전합니다",
-        1: "내 물풍선도 피하세요",
-      }[step];
-    }
-
-    return {
-      3: `${this.state.mapName} · 빈 공간을 만들고 먼저 성장하세요`,
-      2: "물줄기는 단단한 벽에서 멈춥니다",
-      1: "자신의 물풍선에서도 반드시 탈출하세요",
-    }[step];
-  }
 }

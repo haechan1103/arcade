@@ -12,6 +12,37 @@ export interface DifficultyCardOptions {
   layout: "tile" | "row";
 }
 
+function centerTextByInk(
+  text: Phaser.GameObjects.Text,
+  centerX: number,
+  centerY: number,
+): void {
+  const bounds = text.context.measureText(text.text);
+  text.setOrigin(0.5);
+  const hasHorizontalInkBounds = [
+    bounds.actualBoundingBoxLeft,
+    bounds.actualBoundingBoxRight,
+  ].every(Number.isFinite);
+  const hasVerticalInkBounds = [
+    bounds.fontBoundingBoxAscent,
+    bounds.actualBoundingBoxAscent,
+    bounds.actualBoundingBoxDescent,
+  ].every(Number.isFinite);
+
+  const inkCenterX = hasHorizontalInkBounds
+    ? (bounds.actualBoundingBoxRight - bounds.actualBoundingBoxLeft) / 2
+    : text.width / 2;
+  const inkCenterY = hasVerticalInkBounds
+    ? bounds.fontBoundingBoxAscent +
+      (bounds.actualBoundingBoxDescent - bounds.actualBoundingBoxAscent) / 2
+    : text.height / 2;
+
+  text.setPosition(
+    centerX + text.width / 2 - inkCenterX,
+    centerY + text.height / 2 - inkCenterY,
+  );
+}
+
 export function createDifficultyCard(
   scene: Phaser.Scene,
   x: number,
@@ -52,7 +83,7 @@ export function createDifficultyCard(
   const badgeText = scene.add
     .text(
       badge.x,
-      badge.y + 1,
+      badge.y,
       String(level).padStart(2, "0"),
       {
         fontFamily: UI_FONT,
@@ -61,8 +92,8 @@ export function createDifficultyCard(
         color: "#f6fbff",
         resolution: UI_TEXT_RESOLUTION,
       },
-    )
-    .setOrigin(0.5);
+    );
+  centerTextByInk(badgeText, badge.x, badge.y);
 
   const eyebrowX = tile ? left + 68 : left + 87;
   const eyebrowY = tile ? -48 : -27;
@@ -176,15 +207,22 @@ export function createDifficultyCard(
       0.13,
     )
     .setStrokeStyle(1, accentColor, 0.38);
-  const arrowText = scene.add
-    .text(arrowX + 1, arrowY - 1, "›", {
-      fontFamily: UI_FONT,
-      fontSize: tile ? "25px" : "28px",
-      fontStyle: "bold",
-      color: "#dceaff",
-      resolution: UI_TEXT_RESOLUTION,
-    })
-    .setOrigin(0.5);
+  const arrowIcon = scene.add.graphics();
+  const drawArrowIcon = (hovered: boolean): void => {
+    const halfWidth = tile ? 3.5 : 4;
+    const halfHeight = tile ? 6 : 7;
+    arrowIcon.clear();
+    arrowIcon.lineStyle(
+      tile ? 3 : 3.5,
+      hovered ? 0x071322 : 0xdceaff,
+      1,
+    );
+    arrowIcon.beginPath();
+    arrowIcon.moveTo(arrowX - halfWidth, arrowY - halfHeight);
+    arrowIcon.lineTo(arrowX + halfWidth, arrowY);
+    arrowIcon.lineTo(arrowX - halfWidth, arrowY + halfHeight);
+    arrowIcon.strokePath();
+  };
   const hitTarget = scene.add
     .rectangle(0, 0, width, height, 0xffffff, 0.001)
     .setInteractive({ useHandCursor: true });
@@ -230,7 +268,7 @@ export function createDifficultyCard(
     badge.setStrokeStyle(hovered ? 2 : 1.5, accentColor, hovered ? 0.9 : 0.56);
     arrow.setFillStyle(accentColor, hovered ? 0.92 : 0.13);
     arrow.setStrokeStyle(1, accentColor, hovered ? 1 : 0.38);
-    arrowText.setColor(hovered ? "#071322" : "#dceaff");
+    drawArrowIcon(hovered);
     eyebrow.setColor(hovered ? "#a7c5e9" : "#7189ae");
   };
 
@@ -249,7 +287,7 @@ export function createDifficultyCard(
     tagText,
     meterLabel,
     arrow,
-    arrowText,
+    arrowIcon,
     hitTarget,
   ]);
   container.setName(`difficulty-${level}`);
