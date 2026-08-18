@@ -82,7 +82,7 @@ export class BattleScene extends Phaser.Scene {
     this.bot = new BotController(2, this.difficulty, seed);
     this.controls = new KeyboardController(this);
     this.touchControls = new TouchController();
-    this.battleRenderer = new BattleRenderer(this);
+    this.battleRenderer = new BattleRenderer(this, this.difficulty);
     this.previousPositions = new Map(
       this.state.players.map((player) => [
         player.id,

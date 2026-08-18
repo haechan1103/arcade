@@ -1,9 +1,22 @@
+import type { Difficulty } from "@bubble-battle/game-core";
 import Phaser from "phaser";
 
 export const CHARACTER_SHEET = "generated-characters";
 export const OBJECT_SHEET = "generated-objects";
 export const BLAST_SHEET = "generated-blast-animation";
 export const WARNING_BALLOON = "generated-warning-balloon";
+
+export const BOT_CHARACTER_BY_DIFFICULTY: Record<Difficulty, string> = {
+  easy: "generated-bot-easy",
+  normal: "generated-bot-normal",
+  hard: "generated-bot-hard",
+};
+
+const BOT_CHARACTER_PATH_BY_DIFFICULTY: Record<Difficulty, string> = {
+  easy: "/assets/generated/bot-easy-portrait.png",
+  normal: "/assets/generated/bot-normal-portrait.png",
+  hard: "/assets/generated/bot-hard-portrait.png",
+};
 
 export const CHARACTER_FRAME = {
   humanIdle: 0,
@@ -41,6 +54,12 @@ export const OBJECT_FRAME = {
 } as const;
 
 export function preloadGeneratedAssets(scene: Phaser.Scene): void {
+  for (const difficulty of ["easy", "normal", "hard"] as const) {
+    const key = BOT_CHARACTER_BY_DIFFICULTY[difficulty];
+    if (!scene.textures.exists(key)) {
+      scene.load.image(key, BOT_CHARACTER_PATH_BY_DIFFICULTY[difficulty]);
+    }
+  }
   if (!scene.textures.exists(CHARACTER_SHEET)) {
     scene.load.spritesheet(
       CHARACTER_SHEET,
