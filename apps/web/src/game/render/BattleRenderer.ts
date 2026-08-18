@@ -1,10 +1,7 @@
 import {
   HALF_TILE,
-  ROUND_DURATION_TICKS,
-  STORM_START_TICK,
   TICK_RATE,
   TILE_UNITS,
-  type AiDebugInfo,
   type BlastState,
   type Cell,
   type GameEvent,
@@ -16,7 +13,6 @@ import Phaser from "phaser";
 import {
   BLAST_FRAME,
   BLAST_SHEET,
-  BRAND_LOGO,
   CHARACTER_FRAME,
   CHARACTER_SHEET,
   OBJECT_FRAME,
@@ -31,12 +27,7 @@ import {
   cellToScreen,
   GAME_HEIGHT,
   GAME_WIDTH,
-  IS_COMPACT_LAYOUT,
-  SIDEBAR_X,
   TILE_SIZE,
-  UI_FONT,
-  UI_TEXT_RESOLUTION,
-  isPortraitLayout,
   worldToScreenX,
   worldToScreenY,
 } from "../layout";
@@ -65,8 +56,6 @@ interface SpriteOptions {
   angle?: number;
   flipX?: boolean;
 }
-
-export type OverlayKind = "none" | "countdown" | "pause";
 
 const PLAYER_COLORS: Record<number, { main: number; dark: number }> = {
   1: { main: 0x35d7f0, dark: 0x077d9b },
@@ -97,234 +86,21 @@ const BLOCK_OCCLUSION_DEPTH = 5.1;
 const WALK_FRAME_MS = 125;
 const BALLOON_WARNING_TICKS = Math.round(TICK_RATE * 1.25);
 
-const BOT_MODE_LABELS: Record<AiDebugInfo["mode"], string> = {
-  escape: "위험 회피 중",
-  pickup: "아이템 탐색 중",
-  attack: "공격 각도 계산 중",
-  break: "블록 공략 중",
-  wander: "경로 탐색 중",
-  trapped: "물방울 탈출 중",
-};
-
 export class BattleRenderer {
   private readonly scene: Phaser.Scene;
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly effectGraphics: Phaser.GameObjects.Graphics;
-  private readonly overlayGraphics: Phaser.GameObjects.Graphics;
-  private readonly brandLogo: Phaser.GameObjects.Image | null;
-  private readonly titleText: Phaser.GameObjects.Text;
-  private readonly mapText: Phaser.GameObjects.Text;
-  private readonly timeText: Phaser.GameObjects.Text;
-  private readonly phaseText: Phaser.GameObjects.Text;
-  private readonly humanNameText: Phaser.GameObjects.Text;
-  private readonly humanStatsText: Phaser.GameObjects.Text;
-  private readonly botNameText: Phaser.GameObjects.Text;
-  private readonly botStatsText: Phaser.GameObjects.Text;
-  private readonly botModeText: Phaser.GameObjects.Text;
-  private readonly helpText: Phaser.GameObjects.Text;
-  private readonly seedText: Phaser.GameObjects.Text;
-  private readonly compactHumanText: Phaser.GameObjects.Text;
-  private readonly compactTimeText: Phaser.GameObjects.Text;
-  private readonly compactBotText: Phaser.GameObjects.Text;
-  private readonly overlayPrimary: Phaser.GameObjects.Text;
-  private readonly overlaySecondary: Phaser.GameObjects.Text;
   private readonly particles: Particle[] = [];
   private readonly spritePools = new Map<
     string,
     Phaser.GameObjects.Image[]
   >();
   private readonly spriteUseCount = new Map<string, number>();
-  private overlayKind: OverlayKind = "none";
-  private overlayTitle = "";
-  private overlaySubtitle = "";
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.graphics = scene.add.graphics().setDepth(1);
     this.effectGraphics = scene.add.graphics().setDepth(4);
-    this.overlayGraphics = scene.add.graphics().setDepth(20);
-
-    this.titleText = this.makeText(
-      SIDEBAR_X + 18,
-      45,
-      "BUBBLE\nBATTLE",
-      35,
-      "#f6fbff",
-      900,
-    ).setLineSpacing(-8);
-    this.brandLogo = scene.textures.exists(BRAND_LOGO)
-      ? scene.add
-          .image(SIDEBAR_X + 141, 74, BRAND_LOGO)
-          .setDisplaySize(214, 86)
-          .setDepth(6)
-      : null;
-    this.mapText = this.makeText(
-      SIDEBAR_X + 20,
-      132,
-      "",
-      13,
-      "#8ca2c9",
-      700,
-    );
-    this.timeText = this.makeText(
-      SIDEBAR_X + 142,
-      165,
-      "2:30",
-      42,
-      "#ffffff",
-      900,
-    ).setOrigin(0.5);
-    this.phaseText = this.makeText(
-      SIDEBAR_X + 142,
-      200,
-      "ROUND TIME",
-      11,
-      "#7088b7",
-      800,
-    ).setOrigin(0.5);
-
-    this.humanNameText = this.makeText(
-      SIDEBAR_X + 28,
-      276,
-      "플레이어",
-      20,
-      "#dffaff",
-      900,
-    );
-    this.humanStatsText = this.makeText(
-      SIDEBAR_X + 28,
-      310,
-      "",
-      13,
-      "#a9bedf",
-      700,
-    ).setLineSpacing(7);
-    this.botNameText = this.makeText(
-      SIDEBAR_X + 28,
-      423,
-      "버블봇",
-      20,
-      "#ffe6ef",
-      900,
-    );
-    this.botStatsText = this.makeText(
-      SIDEBAR_X + 28,
-      457,
-      "",
-      13,
-      "#a9bedf",
-      700,
-    ).setLineSpacing(7);
-    this.botModeText = this.makeText(
-      SIDEBAR_X + 28,
-      533,
-      "",
-      12,
-      "#ff9fbe",
-      800,
-    );
-    this.helpText = this.makeText(
-      SIDEBAR_X + 22,
-      600,
-      "SPACE  물풍선\nE       바늘\nESC     일시정지\nM       음소거",
-      12,
-      "#788cad",
-      700,
-    ).setLineSpacing(6);
-    this.seedText = this.makeText(
-      SIDEBAR_X + 22,
-      690,
-      "",
-      10,
-      "#536484",
-      700,
-    );
-
-    this.compactHumanText = this.makeText(
-      BOARD_X + 17,
-      BOARD_Y + 24,
-      "",
-      18,
-      "#75efff",
-      900,
-    )
-      .setOrigin(0, 0.5)
-      .setVisible(IS_COMPACT_LAYOUT);
-    this.compactTimeText = this.makeText(
-      BOARD_X + BOARD_WIDTH / 2,
-      BOARD_Y + 24,
-      "2:30",
-      26,
-      "#ffffff",
-      900,
-    )
-      .setOrigin(0.5)
-      .setVisible(IS_COMPACT_LAYOUT);
-    this.compactBotText = this.makeText(
-      BOARD_X + BOARD_WIDTH - 17,
-      BOARD_Y + 24,
-      "",
-      18,
-      "#ff8bac",
-      900,
-    )
-      .setOrigin(1, 0.5)
-      .setVisible(IS_COMPACT_LAYOUT);
-
-    for (const text of [
-      this.titleText,
-      this.mapText,
-      this.timeText,
-      this.phaseText,
-      this.humanNameText,
-      this.humanStatsText,
-      this.botNameText,
-      this.botStatsText,
-      this.botModeText,
-      this.helpText,
-      this.seedText,
-    ]) {
-      text.setVisible(!IS_COMPACT_LAYOUT);
-    }
-    if (this.brandLogo !== null) {
-      this.titleText.setVisible(false);
-      this.brandLogo.setVisible(!IS_COMPACT_LAYOUT);
-    }
-
-    this.overlayPrimary = this.makeText(
-      BOARD_X + BOARD_WIDTH / 2,
-      BOARD_Y + BOARD_HEIGHT / 2 - 14,
-      "",
-      76,
-      "#ffffff",
-      900,
-    )
-      .setOrigin(0.5)
-      .setDepth(21)
-      .setVisible(false);
-    this.overlaySecondary = this.makeText(
-      BOARD_X + BOARD_WIDTH / 2,
-      BOARD_Y + BOARD_HEIGHT / 2 + 57,
-      "",
-      16,
-      "#b9d9eb",
-      800,
-    )
-      .setOrigin(0.5)
-      .setAlign("center")
-      .setWordWrapWidth(BOARD_WIDTH - 100, true)
-      .setDepth(21)
-      .setVisible(false);
-  }
-
-  setOverlay(
-    kind: OverlayKind,
-    title = "",
-    subtitle = "",
-  ): void {
-    this.overlayKind = kind;
-    this.overlayTitle = title;
-    this.overlaySubtitle = subtitle;
   }
 
   handleEvent(event: GameEvent): void {
@@ -386,17 +162,11 @@ export class BattleRenderer {
     previousPositions: ReadonlyMap<number, Position>,
     interpolation: number,
     elapsedMs: number,
-    botDebug: AiDebugInfo,
   ): void {
     this.beginSpriteFrame();
     this.graphics.clear();
     this.drawBackdrop(elapsedMs);
     this.drawBoard(state, elapsedMs);
-    if (IS_COMPACT_LAYOUT) {
-      this.drawCompactHud(state);
-    } else {
-      this.drawSidebar(state, botDebug);
-    }
     this.drawEntities(
       state,
       previousPositions,
@@ -404,7 +174,6 @@ export class BattleRenderer {
       elapsedMs,
     );
     this.drawParticles();
-    this.drawOverlay();
   }
 
   destroy(): void {
@@ -417,26 +186,6 @@ export class BattleRenderer {
     this.spriteUseCount.clear();
     this.graphics.destroy();
     this.effectGraphics.destroy();
-    this.overlayGraphics.destroy();
-  }
-
-  private makeText(
-    x: number,
-    y: number,
-    text: string,
-    fontSize: number,
-    color: string,
-    fontWeight: number,
-  ): Phaser.GameObjects.Text {
-    return this.scene.add
-      .text(x, y, text, {
-        fontFamily: UI_FONT,
-        fontSize: `${fontSize}px`,
-        fontStyle: fontWeight >= 800 ? "bold" : "normal",
-        color,
-        resolution: UI_TEXT_RESOLUTION,
-      })
-      .setDepth(6);
   }
 
   private beginSpriteFrame(): void {
@@ -504,24 +253,6 @@ export class BattleRenderer {
       BOARD_HEIGHT + 12,
       24,
     );
-    if (!IS_COMPACT_LAYOUT) {
-      this.graphics.fillStyle(0x17233e, 0.9);
-      this.graphics.fillRoundedRect(
-        SIDEBAR_X,
-        28,
-        282,
-        664,
-        24,
-      );
-      this.graphics.lineStyle(1, 0x8edfff, 0.16);
-      this.graphics.strokeRoundedRect(
-        SIDEBAR_X,
-        28,
-        282,
-        664,
-        24,
-      );
-    }
   }
 
   private drawBoard(state: GameState, elapsedMs: number): void {
@@ -1276,198 +1007,6 @@ export class BattleRenderer {
     return character !== null;
   }
 
-  private drawSidebar(
-    state: GameState,
-    botDebug: AiDebugInfo,
-  ): void {
-    this.graphics.fillStyle(0x20cce6, 1);
-    this.graphics.fillRoundedRect(SIDEBAR_X + 20, 40, 7, 70, 4);
-    this.graphics.fillStyle(0xff668f, 1);
-    this.graphics.fillRoundedRect(SIDEBAR_X + 31, 40, 7, 47, 4);
-
-    this.graphics.fillStyle(0x0c1630, 0.86);
-    this.graphics.fillRoundedRect(SIDEBAR_X + 17, 145, 250, 77, 17);
-    this.graphics.lineStyle(1, 0x8feaff, 0.12);
-    this.graphics.strokeRoundedRect(
-      SIDEBAR_X + 17,
-      145,
-      250,
-      77,
-      17,
-    );
-
-    this.drawPlayerCard(1, 250, 0x35d7f0);
-    this.drawPlayerCard(2, 397, 0xff668f);
-
-    this.graphics.fillStyle(0x0a132b, 0.64);
-    this.graphics.fillRoundedRect(
-      SIDEBAR_X + 17,
-      578,
-      250,
-      101,
-      15,
-    );
-
-    const remainingTicks = Math.max(
-      0,
-      ROUND_DURATION_TICKS - state.tick,
-    );
-    const seconds = Math.ceil(remainingTicks / TICK_RATE);
-    const minutes = Math.floor(seconds / 60);
-    const secondPart = String(seconds % 60).padStart(2, "0");
-    this.timeText.setText(`${minutes}:${secondPart}`);
-    this.timeText.setColor(
-      state.tick >= STORM_START_TICK ? "#ff8bb5" : "#ffffff",
-    );
-    this.phaseText.setText(
-      state.tick >= STORM_START_TICK ? "TIDAL SURGE" : "ROUND TIME",
-    );
-    this.phaseText.setColor(
-      state.tick >= STORM_START_TICK ? "#ff739e" : "#7088b7",
-    );
-    this.mapText.setText(`RANDOM ARENA  ·  ${state.mapName}`);
-
-    const human = state.players.find((player) => player.id === 1);
-    const bot = state.players.find((player) => player.id === 2);
-    if (human !== undefined) {
-      this.humanNameText.setText(human.name);
-      this.humanStatsText.setText(this.playerStats(human));
-      this.humanNameText.setAlpha(human.status === "dead" ? 0.4 : 1);
-    }
-    if (bot !== undefined) {
-      this.botNameText.setText(bot.name);
-      this.botStatsText.setText(this.playerStats(bot));
-      this.botNameText.setAlpha(bot.status === "dead" ? 0.4 : 1);
-    }
-
-    this.botModeText.setText(
-      `AI  ·  ${BOT_MODE_LABELS[botDebug.mode]}`,
-    );
-    this.seedText.setText(
-      `SEED ${state.seed.toString(16).toUpperCase().padStart(8, "0")}`,
-    );
-  }
-
-  private drawCompactHud(state: GameState): void {
-    this.graphics.fillStyle(0x07152d, 0.9);
-    this.graphics.fillRoundedRect(
-      BOARD_X + 6,
-      BOARD_Y + 5,
-      BOARD_WIDTH - 12,
-      38,
-      13,
-    );
-    this.graphics.lineStyle(1, 0xa5ecff, 0.2);
-    this.graphics.strokeRoundedRect(
-      BOARD_X + 6,
-      BOARD_Y + 5,
-      BOARD_WIDTH - 12,
-      38,
-      13,
-    );
-
-    const remainingTicks = Math.max(
-      0,
-      ROUND_DURATION_TICKS - state.tick,
-    );
-    const seconds = Math.ceil(remainingTicks / TICK_RATE);
-    const minutes = Math.floor(seconds / 60);
-    const secondPart = String(seconds % 60).padStart(2, "0");
-    this.compactTimeText
-      .setText(`${minutes}:${secondPart}`)
-      .setColor(
-        state.tick >= STORM_START_TICK ? "#ff8bb5" : "#ffffff",
-      );
-
-    const human = state.players.find((player) => player.id === 1);
-    const bot = state.players.find((player) => player.id === 2);
-    if (human !== undefined) {
-      this.compactHumanText
-        .setText(this.compactPlayerStats("YOU", human, true))
-        .setColor(this.compactStatusColor(human, "#75efff"));
-    }
-    if (bot !== undefined) {
-      this.compactBotText
-        .setText(this.compactPlayerStats("BOT", bot, false))
-        .setColor(this.compactStatusColor(bot, "#ff8bac"));
-    }
-  }
-
-  private compactPlayerStats(
-    label: string,
-    player: PlayerState,
-    includeNeedle: boolean,
-  ): string {
-    const status =
-      player.status === "trapped"
-        ? "!"
-        : player.status === "dead"
-          ? "×"
-          : "";
-    const needle = includeNeedle ? `  ◇${player.needles}` : "";
-    return `${label}${status}  ●${player.activeBalloons}/${player.balloonCapacity}  ✦${player.blastRange}  »${player.speedStat}${needle}`;
-  }
-
-  private compactStatusColor(
-    player: PlayerState,
-    defaultColor: string,
-  ): string {
-    if (player.status === "dead") {
-      return "#687893";
-    }
-    if (player.status === "trapped") {
-      return "#ffe17a";
-    }
-    return defaultColor;
-  }
-
-  private drawPlayerCard(
-    team: number,
-    top: number,
-    color: number,
-  ): void {
-    this.graphics.fillStyle(0x0c1630, 0.78);
-    this.graphics.fillRoundedRect(
-      SIDEBAR_X + 17,
-      top,
-      250,
-      130,
-      17,
-    );
-    this.graphics.fillStyle(color, 0.95);
-    this.graphics.fillRoundedRect(
-      SIDEBAR_X + 17,
-      top,
-      6,
-      130,
-      4,
-    );
-    this.graphics.fillStyle(color, 0.18);
-    this.graphics.fillCircle(SIDEBAR_X + 229, top + 27, 30);
-    this.graphics.fillStyle(color, 0.78);
-    this.graphics.fillCircle(SIDEBAR_X + 229, top + 27, 11);
-    this.graphics.fillStyle(0xffffff, 0.75);
-    this.graphics.fillCircle(
-      SIDEBAR_X + 225 + (team === 1 ? -1 : 1),
-      top + 24,
-      3,
-    );
-  }
-
-  private playerStats(player: PlayerState): string {
-    const status =
-      player.status === "alive"
-        ? "READY"
-        : player.status === "trapped"
-          ? "TRAPPED!"
-          : "OUT";
-    return [
-      `● 풍선  ${player.activeBalloons}/${player.balloonCapacity}     ✦ 사거리  ${player.blastRange}`,
-      `» 속도  ${player.speedStat}       ◇ 바늘  ${player.needles}`,
-      status,
-    ].join("\n");
-  }
-
   private drawParticles(): void {
     this.effectGraphics.clear();
     for (const particle of this.particles) {
@@ -1481,67 +1020,4 @@ export class BattleRenderer {
     }
   }
 
-  private drawOverlay(): void {
-    const portrait = isPortraitLayout();
-    this.overlayGraphics.clear();
-    if (this.overlayKind === "none") {
-      this.overlayPrimary.setVisible(false);
-      this.overlaySecondary.setVisible(false);
-      return;
-    }
-
-    this.overlayPrimary
-      .setText(this.overlayTitle)
-      .setVisible(true);
-    this.overlaySecondary
-      .setText(this.overlaySubtitle)
-      .setFontSize(portrait ? 26 : IS_COMPACT_LAYOUT ? 21 : 16)
-      .setVisible(this.overlaySubtitle.length > 0);
-
-    if (this.overlayKind === "pause") {
-      this.overlayGraphics.fillStyle(0x050a18, 0.74);
-      this.overlayGraphics.fillRoundedRect(
-        BOARD_X,
-        BOARD_Y,
-        BOARD_WIDTH,
-        BOARD_HEIGHT,
-        16,
-      );
-      this.overlayGraphics.fillStyle(0x14223c, 0.94);
-      this.overlayGraphics.fillRoundedRect(
-        BOARD_X + BOARD_WIDTH / 2 - 160,
-        BOARD_Y + BOARD_HEIGHT / 2 - 93,
-        320,
-        175,
-        24,
-      );
-      this.overlayGraphics.lineStyle(2, 0x79e9ff, 0.28);
-      this.overlayGraphics.strokeRoundedRect(
-        BOARD_X + BOARD_WIDTH / 2 - 160,
-        BOARD_Y + BOARD_HEIGHT / 2 - 93,
-        320,
-        175,
-        24,
-      );
-      this.overlayPrimary.setFontSize(
-        portrait ? 50 : IS_COMPACT_LAYOUT ? 46 : 44,
-      );
-    } else {
-      this.overlayGraphics.fillStyle(0x061225, 0.58);
-      this.overlayGraphics.fillCircle(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2 - 10,
-        86,
-      );
-      this.overlayGraphics.lineStyle(4, 0x6beeff, 0.4);
-      this.overlayGraphics.strokeCircle(
-        BOARD_X + BOARD_WIDTH / 2,
-        BOARD_Y + BOARD_HEIGHT / 2 - 10,
-        86,
-      );
-      this.overlayPrimary.setFontSize(
-        portrait ? 86 : IS_COMPACT_LAYOUT ? 80 : 76,
-      );
-    }
-  }
 }

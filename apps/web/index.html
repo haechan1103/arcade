@@ -51,6 +51,140 @@
     <main class="app-shell">
       <section class="game-frame" aria-label="Bubble Battle 게임">
         <div id="game-container"></div>
+        <div class="game-ui" data-game-ui>
+          <section class="menu-ui" data-ui-menu aria-label="게임 시작 메뉴">
+            <img
+              class="menu-logo"
+              src="/assets/brand/bubble-battle-logo.png"
+              alt="Bubble Battle"
+            />
+            <p class="menu-tagline">
+              물풍선을 놓고, 길을 만들고, 먼저 상대를 가두세요.
+            </p>
+            <div class="difficulty-heading">
+              <span>AI 난이도</span>
+              <small>카드를 누르면 바로 대결이 시작돼요</small>
+            </div>
+            <div class="difficulty-list">
+              <button class="difficulty-card is-easy" type="button" data-difficulty="easy">
+                <span class="difficulty-number">01</span>
+                <span class="difficulty-copy">
+                  <small>입문</small>
+                  <strong>느긋한 봇</strong>
+                  <span>천천히 움직이며 기본 공격을 연습해요</span>
+                </span>
+                <span class="difficulty-power" aria-label="공격성 1단계">●○○</span>
+                <span class="difficulty-arrow" aria-hidden="true">›</span>
+              </button>
+              <button class="difficulty-card is-normal" type="button" data-difficulty="normal">
+                <span class="difficulty-number">02</span>
+                <span class="difficulty-copy">
+                  <small>추천</small>
+                  <strong>영리한 봇</strong>
+                  <span>위험 회피와 공격을 균형 있게 판단해요</span>
+                </span>
+                <span class="difficulty-power" aria-label="공격성 2단계">●●○</span>
+                <span class="difficulty-arrow" aria-hidden="true">›</span>
+              </button>
+              <button class="difficulty-card is-hard" type="button" data-difficulty="hard">
+                <span class="difficulty-number">03</span>
+                <span class="difficulty-copy">
+                  <small>도전</small>
+                  <strong>집요한 봇</strong>
+                  <span>빠르게 길을 막고 탈출 경로를 압박해요</span>
+                </span>
+                <span class="difficulty-power" aria-label="공격성 3단계">●●●</span>
+                <span class="difficulty-arrow" aria-hidden="true">›</span>
+              </button>
+            </div>
+            <p class="menu-help">
+              방향키 / WASD로 이동 · SPACE로 물풍선 · E로 바늘 사용
+            </p>
+            <p class="menu-meta">3 RANDOM ARENAS · LOCAL 1 VS 1 · NO SERVER</p>
+          </section>
+
+          <section class="battle-ui" data-ui-battle hidden aria-label="대결 정보">
+            <aside class="battle-sidebar">
+              <img
+                class="hud-logo"
+                src="/assets/brand/bubble-battle-logo.png"
+                alt=""
+              />
+              <p class="hud-map"><span>RANDOM ARENA</span> · <b data-ui-map></b></p>
+              <div class="round-clock">
+                <strong data-ui-time>2:30</strong>
+                <span data-ui-phase>ROUND TIME</span>
+              </div>
+
+              <article class="player-card is-human" data-ui-player="human">
+                <i class="player-accent" aria-hidden="true"></i>
+                <div class="player-card-heading">
+                  <strong data-ui-human-name>플레이어</strong>
+                  <span class="player-orb" aria-hidden="true"></span>
+                </div>
+                <dl class="player-stats">
+                  <div><dt>풍선</dt><dd data-ui-human-balloons>-</dd></div>
+                  <div><dt>사거리</dt><dd data-ui-human-range>-</dd></div>
+                  <div><dt>속도</dt><dd data-ui-human-speed>-</dd></div>
+                  <div><dt>바늘</dt><dd data-ui-human-needles>-</dd></div>
+                </dl>
+                <p class="player-status" data-ui-human-status>READY</p>
+              </article>
+
+              <article class="player-card is-bot" data-ui-player="bot">
+                <i class="player-accent" aria-hidden="true"></i>
+                <div class="player-card-heading">
+                  <strong data-ui-bot-name>버블봇</strong>
+                  <span class="player-orb" aria-hidden="true"></span>
+                </div>
+                <dl class="player-stats">
+                  <div><dt>풍선</dt><dd data-ui-bot-balloons>-</dd></div>
+                  <div><dt>사거리</dt><dd data-ui-bot-range>-</dd></div>
+                  <div><dt>속도</dt><dd data-ui-bot-speed>-</dd></div>
+                  <div><dt>바늘</dt><dd data-ui-bot-needles>-</dd></div>
+                </dl>
+                <p class="player-status" data-ui-bot-status>READY</p>
+                <p class="bot-mode">AI · <span data-ui-bot-mode></span></p>
+              </article>
+
+              <div class="hud-help" aria-label="키보드 조작 안내">
+                <span><kbd>SPACE</kbd> 물풍선 설치</span>
+                <span><kbd>E</kbd> 바늘 사용</span>
+                <span><kbd>ESC</kbd> 일시정지</span>
+                <span><kbd>M</kbd> 음소거</span>
+              </div>
+              <small class="hud-seed" data-ui-seed></small>
+            </aside>
+
+            <div class="compact-hud" aria-label="대결 요약">
+              <span class="compact-player is-human"><b>YOU</b> <span data-ui-human-balloons></span></span>
+              <strong data-ui-time>2:30</strong>
+              <span class="compact-player is-bot"><b>BOT</b> <span data-ui-bot-balloons></span></span>
+            </div>
+
+            <div class="game-overlay" data-ui-overlay hidden>
+              <div class="game-overlay-card">
+                <strong data-ui-overlay-title></strong>
+                <span data-ui-overlay-subtitle></span>
+              </div>
+            </div>
+
+            <div class="result-overlay" data-ui-result hidden role="dialog" aria-modal="true" aria-labelledby="result-title">
+              <div class="result-card">
+                <div class="result-badge" data-ui-result-badge>★</div>
+                <small>ROUND COMPLETE</small>
+                <h2 id="result-title" data-ui-result-title>YOU WIN</h2>
+                <p data-ui-result-message></p>
+                <div class="result-actions">
+                  <button class="primary" type="button" data-ui-retry>다시 대결</button>
+                  <button type="button" data-ui-open-menu>난이도 선택</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-toast" data-ui-toast role="status"></div>
+          </section>
+        </div>
       </section>
       <section
         class="touch-controls"

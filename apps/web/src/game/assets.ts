@@ -4,7 +4,6 @@ export const CHARACTER_SHEET = "generated-characters";
 export const OBJECT_SHEET = "generated-objects";
 export const BLAST_SHEET = "generated-blast-animation";
 export const WARNING_BALLOON = "generated-warning-balloon";
-export const BRAND_LOGO = "bubble-battle-logo";
 
 export const CHARACTER_FRAME = {
   humanIdle: 0,
@@ -42,12 +41,6 @@ export const OBJECT_FRAME = {
 } as const;
 
 export function preloadGeneratedAssets(scene: Phaser.Scene): void {
-  if (!scene.textures.exists(BRAND_LOGO)) {
-    scene.load.image(
-      BRAND_LOGO,
-      "/assets/brand/bubble-battle-logo.png",
-    );
-  }
   if (!scene.textures.exists(CHARACTER_SHEET)) {
     scene.load.spritesheet(
       CHARACTER_SHEET,
