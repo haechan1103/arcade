@@ -19,6 +19,7 @@ function required<T extends Element>(
 
 export class GameUiView {
   private readonly root: HTMLElement;
+  private readonly shell: HTMLElement | null;
   private readonly menu: HTMLElement;
   private readonly battle: HTMLElement;
   private readonly result: HTMLElement;
@@ -34,6 +35,7 @@ export class GameUiView {
     actions: GameUiActions,
   ) {
     this.root = root;
+    this.shell = root.closest<HTMLElement>(".app-shell");
     this.menu = required(root, "[data-ui-menu]");
     this.battle = required(root, "[data-ui-battle]");
     this.result = required(root, "[data-ui-result]");
@@ -81,6 +83,10 @@ export class GameUiView {
     this.menu.hidden = state.screen !== "menu";
     this.battle.hidden = state.screen !== "battle";
     this.root.dataset.screen = state.screen;
+    this.shell?.classList.toggle(
+      "is-battle-active",
+      state.screen === "battle",
+    );
     if (state.screen !== "battle") {
       this.result.hidden = true;
       this.overlay.hidden = true;
@@ -89,9 +95,7 @@ export class GameUiView {
 
     this.setText("[data-ui-map]", state.mapName);
     this.setText("[data-ui-time]", state.time);
-    this.setText("[data-ui-phase]", state.phase);
     this.setText("[data-ui-bot-mode]", state.botMode);
-    this.setText("[data-ui-seed]", state.seed);
     this.renderPlayer("human", state.human);
     this.renderPlayer("bot", state.bot);
     this.renderOverlay(state);

@@ -26,11 +26,9 @@ describe("presentBattleUi", () => {
     expect(ui).toMatchObject({
       screen: "battle",
       time: "2:30",
-      phase: "ROUND TIME",
       human: { name: "플레이어", balloons: "0/1", status: "alive" },
       bot: { name: "영리한 버블봇", balloons: "0/1", status: "alive" },
       botMode: "위험 회피 중",
-      seed: "SEED 00001234",
       overlay: { kind: "none" },
       result: null,
     });

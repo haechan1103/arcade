@@ -1,6 +1,5 @@
 import {
   ROUND_DURATION_TICKS,
-  STORM_START_TICK,
   TICK_RATE,
   type AiDebugInfo,
   type GameState,
@@ -36,11 +35,9 @@ export type BattleUiSnapshot = Pick<
   | "screen"
   | "mapName"
   | "time"
-  | "phase"
   | "human"
   | "bot"
   | "botMode"
-  | "seed"
   | "overlay"
   | "result"
 >;
@@ -62,11 +59,9 @@ export function presentBattleUi({
     screen: "battle",
     mapName: state.mapName,
     time: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`,
-    phase: state.tick >= STORM_START_TICK ? "TIDAL SURGE" : "ROUND TIME",
     human: human === null ? null : presentPlayer(human),
     bot: bot === null ? null : presentPlayer(bot),
     botMode: BOT_MODE_LABELS[botDebug.mode],
-    seed: `SEED ${state.seed.toString(16).toUpperCase().padStart(8, "0")}`,
     overlay: presentOverlay(state, countdownMs, paused, compact),
     result: presentResult(state, resultVisible),
   };

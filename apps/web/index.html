@@ -67,6 +67,7 @@
             </div>
             <div class="difficulty-list">
               <button class="difficulty-card is-easy" type="button" data-difficulty="easy">
+                <img class="difficulty-character" src="/assets/generated/bot-easy-portrait.png" alt="" />
                 <span class="difficulty-number">01</span>
                 <span class="difficulty-copy">
                   <small>입문</small>
@@ -77,6 +78,7 @@
                 <span class="difficulty-arrow" aria-hidden="true">›</span>
               </button>
               <button class="difficulty-card is-normal" type="button" data-difficulty="normal">
+                <img class="difficulty-character" src="/assets/generated/bot-normal-portrait.png" alt="" />
                 <span class="difficulty-number">02</span>
                 <span class="difficulty-copy">
                   <small>추천</small>
@@ -87,6 +89,7 @@
                 <span class="difficulty-arrow" aria-hidden="true">›</span>
               </button>
               <button class="difficulty-card is-hard" type="button" data-difficulty="hard">
+                <img class="difficulty-character" src="/assets/generated/bot-hard-portrait.png" alt="" />
                 <span class="difficulty-number">03</span>
                 <span class="difficulty-copy">
                   <small>도전</small>
@@ -113,7 +116,6 @@
               <p class="hud-map"><span>RANDOM ARENA</span> · <b data-ui-map></b></p>
               <div class="round-clock">
                 <strong data-ui-time>2:30</strong>
-                <span data-ui-phase>ROUND TIME</span>
               </div>
 
               <article class="player-card is-human" data-ui-player="human">
@@ -147,13 +149,6 @@
                 <p class="bot-mode">AI · <span data-ui-bot-mode></span></p>
               </article>
 
-              <div class="hud-help" aria-label="키보드 조작 안내">
-                <span><kbd>SPACE</kbd> 물풍선 설치</span>
-                <span><kbd>E</kbd> 바늘 사용</span>
-                <span><kbd>ESC</kbd> 일시정지</span>
-                <span><kbd>M</kbd> 음소거</span>
-              </div>
-              <small class="hud-seed" data-ui-seed></small>
             </aside>
 
             <div class="compact-hud" aria-label="대결 요약">
@@ -171,8 +166,13 @@
 
             <div class="result-overlay" data-ui-result hidden role="dialog" aria-modal="true" aria-labelledby="result-title">
               <div class="result-card">
+                <img
+                  class="result-illustration"
+                  data-ui-result-image
+                  src="/assets/generated/victory-celebration.png"
+                  alt="우승 트로피를 든 버블 히어로"
+                />
                 <div class="result-badge" data-ui-result-badge>★</div>
-                <small>ROUND COMPLETE</small>
                 <h2 id="result-title" data-ui-result-title>YOU WIN</h2>
                 <p data-ui-result-message></p>
                 <div class="result-actions">

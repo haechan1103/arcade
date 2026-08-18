@@ -21,11 +21,9 @@ export interface GameUiState {
   difficulty: Difficulty;
   mapName: string;
   time: string;
-  phase: string;
   human: PlayerHudState | null;
   bot: PlayerHudState | null;
   botMode: string;
-  seed: string;
   overlay: UiOverlay;
   result: UiResult;
   toast: { id: number; message: string } | null;
@@ -36,11 +34,9 @@ export const INITIAL_GAME_UI_STATE: GameUiState = {
   difficulty: "normal",
   mapName: "",
   time: "2:30",
-  phase: "ROUND TIME",
   human: null,
   bot: null,
   botMode: "",
-  seed: "",
   overlay: { kind: "none" },
   result: null,
   toast: null,

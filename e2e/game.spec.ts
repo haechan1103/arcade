@@ -77,6 +77,23 @@ async function forceHumanDefeat(page: Page): Promise<void> {
     .toBe(true);
 }
 
+async function forceBotDefeat(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const debugState =
+      window.__BUBBLE_BATTLE__.getState() as DebugState;
+    const bot = debugState.players.find((player) => player.id === 2);
+    if (bot !== undefined) {
+      bot.status = "dead";
+    }
+  });
+  await expect.poll(async () => (await state(page)).phase).toBe("ended");
+  await expect
+    .poll(async () => (await uiState(page)).resultVisible, {
+      timeout: 3_000,
+    })
+    .toBe(true);
+}
+
 async function startBattle(
   page: Page,
   difficulty: "easy" | "normal" | "hard" = "normal",
@@ -103,6 +120,7 @@ test("menu starts a playable local match", async ({ page }) => {
 
   await page.goto("/");
   await expect(page.locator("#game-container canvas")).toBeVisible();
+  await expect(page.locator(".difficulty-character")).toHaveCount(3);
   expect(
     await page.evaluate(
       () => window.__BUBBLE_BATTLE__.layout as DebugLayout,
@@ -122,6 +140,8 @@ test("menu starts a playable local match", async ({ page }) => {
   await expect
     .poll(async () => (await state(page)).tick, { timeout: 6_000 })
     .toBeGreaterThan(2);
+  await expect(page.locator(".hud-help, .hud-seed, [data-ui-phase]")).toHaveCount(0);
+  await expect(page.locator(".controls")).toBeHidden();
 
   const beforeMove = await state(page);
   const playerBefore = beforeMove.players.find(
@@ -292,7 +312,15 @@ test("retry resets countdown and can show a second result", async ({
   await expect
     .poll(async () => (await state(page)).tick, { timeout: 5_000 })
     .toBeGreaterThan(2);
-  await forceHumanDefeat(page);
+  await forceBotDefeat(page);
+  await expect(page.locator("[data-ui-result-title]")).toHaveText(
+    "YOU WIN",
+  );
+  await expect(page.locator("[data-ui-result-image]")).toBeVisible();
+  await page.screenshot({
+    path: "test-results/result-win.png",
+    fullPage: true,
+  });
 });
 
 test.describe("mobile touch controls", () => {
